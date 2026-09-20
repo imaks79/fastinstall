@@ -32,6 +32,7 @@ cmd_install() {
     step "install_oh_my_zsh"       install_oh_my_zsh
     step "install_oh_my_zsh_plugins" install_oh_my_zsh_plugins
     step "install_oh_my_tmux"      install_oh_my_tmux
+    step "install_tpm"             install_tpm
     step "install_alacritty_theme" install_alacritty_theme
 
     echo

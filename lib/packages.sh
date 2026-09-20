@@ -219,6 +219,10 @@ install_oh_my_tmux() {
     clone_or_update https://github.com/gpakosz/.tmux.git "$HOME/.config/.oh-my-tmux"
 }
 
+install_tpm() {
+    clone_or_update https://github.com/tmux-plugins/tpm "$HOME/.tmux/plugins/tpm"
+}
+
 install_alacritty_theme() {
     clone_or_update https://github.com/alacritty/alacritty-theme "$HOME/.config/alacritty/themes"
 }
