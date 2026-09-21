@@ -70,6 +70,17 @@ macOS — brew cask; Linux — через [`getnf`](https://github.com/getnf/get
 | zsh-autosuggestions | `~/.config/.oh-my-zsh/custom/plugins/zsh-autosuggestions` |
 | zsh-syntax-highlighting | `~/.config/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting` |
 | oh-my-tmux | `~/.config/.oh-my-tmux` |
+| tpm | `~/.tmux/plugins/tpm` |
+| tmux-sensible | `~/.tmux/plugins/tmux-sensible` |
+| tmux-resurrect | `~/.tmux/plugins/tmux-resurrect` |
+| tmux-continuum | `~/.tmux/plugins/tmux-continuum` |
+| tmux-yank | `~/.tmux/plugins/tmux-yank` |
+| tmux-thumbs | `~/.tmux/plugins/tmux-thumbs` |
+| tmux-fzf | `~/.tmux/plugins/tmux-fzf` |
+| tmux-fzf-url | `~/.tmux/plugins/tmux-fzf-url` |
+| catppuccin-tmux | `~/.tmux/plugins/catppuccin-tmux` |
+| tmux-sessionx | `~/.tmux/plugins/tmux-sessionx` |
+| tmux-floax | `~/.tmux/plugins/tmux-floax` |
 | alacritty-theme | `~/.config/alacritty/themes` |
 
 Альтернативный Neovim IDE (AstroNvim/NvChad/LunarVim по официальным докам,

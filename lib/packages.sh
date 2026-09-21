@@ -223,6 +223,23 @@ install_tpm() {
     clone_or_update https://github.com/tmux-plugins/tpm "$HOME/.tmux/plugins/tpm"
 }
 
+# Плагины кладём в ~/.tmux/plugins/<имя> заранее (тем же путём, что и сам
+# TPM), чтобы при первом запуске tmux не ждать `prefix + I` — TPM увидит
+# каталоги уже на месте и просто подхватит их.
+install_tmux_plugins() {
+    local plugins_dir="$HOME/.tmux/plugins"
+    clone_or_update https://github.com/tmux-plugins/tmux-sensible   "$plugins_dir/tmux-sensible"
+    clone_or_update https://github.com/tmux-plugins/tmux-resurrect  "$plugins_dir/tmux-resurrect"
+    clone_or_update https://github.com/tmux-plugins/tmux-continuum  "$plugins_dir/tmux-continuum"
+    clone_or_update https://github.com/tmux-plugins/tmux-yank       "$plugins_dir/tmux-yank"
+    clone_or_update https://github.com/fcsonline/tmux-thumbs        "$plugins_dir/tmux-thumbs"
+    clone_or_update https://github.com/sainnhe/tmux-fzf             "$plugins_dir/tmux-fzf"
+    clone_or_update https://github.com/wfxr/tmux-fzf-url            "$plugins_dir/tmux-fzf-url"
+    clone_or_update https://github.com/omerxx/catppuccin-tmux       "$plugins_dir/catppuccin-tmux"
+    clone_or_update https://github.com/omerxx/tmux-sessionx         "$plugins_dir/tmux-sessionx"
+    clone_or_update https://github.com/omerxx/tmux-floax            "$plugins_dir/tmux-floax"
+}
+
 install_alacritty_theme() {
     clone_or_update https://github.com/alacritty/alacritty-theme "$HOME/.config/alacritty/themes"
 }

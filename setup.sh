@@ -5,8 +5,10 @@
 #   ./setup.sh              — установить пакеты
 #
 # Устанавливает: oh-my-zsh (+ плагины zsh-autosuggestions,
-# zsh-syntax-highlighting), oh-my-tmux, git, ssh, stow, mc, alacritty, nvim,
-# htop, pass, gpg, eza;
+# zsh-syntax-highlighting), oh-my-tmux, tpm (+ плагины tmux-sensible,
+# tmux-resurrect, tmux-continuum, tmux-yank, tmux-thumbs, tmux-fzf,
+# tmux-fzf-url, catppuccin-tmux, tmux-sessionx, tmux-floax), git, ssh, stow,
+# mc, alacritty, nvim, htop, pass, gpg, eza;
 # шрифты Hack/0xProto/JetBrainsMono Nerd Font; rust, uv, omp-manager.
 # Neovim IDE-ядро (AstroNvim/NvChad/LunarVim) сюда не входит — опционально
 # через `./tools-extra.sh ide` (диалог выбора).
@@ -33,6 +35,7 @@ cmd_install() {
     step "install_oh_my_zsh_plugins" install_oh_my_zsh_plugins
     step "install_oh_my_tmux"      install_oh_my_tmux
     step "install_tpm"             install_tpm
+    step "install_tmux_plugins"    install_tmux_plugins
     step "install_alacritty_theme" install_alacritty_theme
 
     echo
