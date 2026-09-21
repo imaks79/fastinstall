@@ -27,15 +27,15 @@ Releases). `cargo` должен быть уже установлен — его 
 | **lnav** | Просмотр и анализ логов: подсветка, SQL-запросы к логам | — (есть везде) |
 | **dust** | Наглядная замена `du` — что занимает место на диске | `cargo install du-dust` (бинарь всё равно называется `dust`) |
 | **yazi** | Быстрый терминальный файловый менеджер | `cargo install yazi-fm yazi-cli` |
+| &nbsp;&nbsp;↳ **chafa** | Показ картинок прямо в терминале | — (есть везде) |
+| &nbsp;&nbsp;↳ **pdftoipe** | Конвертация PDF в XML для редактора Ipe | нет; есть только в brew и apt, на dnf/pacman/zypper/apk ставьте из исходников |
+| &nbsp;&nbsp;↳ **7zip** | Архиватор 7-Zip | — (есть везде под разными именами: `sevenzip`/`p7zip-full`/`7zip`/`p7zip`) |
 | **fastfetch** | Информация о системе при старте терминала (замена neofetch) | `.deb` с GitHub Releases (только там, где есть apt) |
 | **bottom** | Монитор процессов и ресурсов (замена top/htop), бинарь `btm` | `cargo install bottom` |
 | **gping** | `ping` с графиком задержки в реальном времени | `cargo install gping` |
 | **trippy** | `traceroute` + `ping` в одном TUI, бинарь `trip` | `cargo install trippy` |
 | **bandwhich** | Какой процесс сколько сетевого трафика потребляет | `cargo install bandwhich` |
 | **bat** | `cat` с подсветкой синтаксиса и git-диффом | — (есть везде; на Debian/Ubuntu бинарь называется `batcat`, не `bat`) |
-| **chafa** | Показ картинок прямо в терминале | — (есть везде) |
-| **pdftoipe** | Конвертация PDF в XML для редактора Ipe | нет; есть только в brew и apt, на dnf/pacman/zypper/apk ставьте из исходников |
-| **7zip** | Архиватор 7-Zip | — (есть везде под разными именами: `sevenzip`/`p7zip-full`/`7zip`/`p7zip`) |
 | **slumber** | Терминальный REST/gRPC-клиент (TUI-замена Postman/Insomnia) | `cargo install slumber` |
 | **[mangofetch](https://github.com/julesklord/mangofetch)** | TUI-загрузчик медиа (YouTube, torrent, SoundCloud, Instagram) — оборачивает `yt-dlp`/`ffmpeg`, сам докачивает недостающие бинари | `cargo install mangofetch` (нет ни в одном пакетном менеджере — новый проект) |
 | **[gonzo](https://github.com/control-theory/gonzo)** | TUI для анализа логов в реальном времени в стиле k9s: графики, Kubernetes/OTLP из коробки, AI-инсайты | нативного пакета нет нигде на Linux — бинарь с GitHub Releases с проверкой sha256 (на macOS есть в brew) |

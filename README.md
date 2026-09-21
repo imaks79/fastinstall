@@ -20,7 +20,7 @@ setup.sh          — установка базового набора паке�
 samba-share.sh    — быстрое расшаривание каталога по SMB (macOS/Linux)
 tools-extra.sh    — доп. TUI/CLI-инструменты (yazi, bat, lazygit, k9s, ...)
 tui-tools.sh      — семейство tui-tools для администрирования Linux-сервера
-lib/              — общие shell-хелперы (common.sh, packages.sh, tools_extra.sh)
+lib/              — общие shell-хелперы (common.sh, packages.sh, tools_extra.sh, tui_select.sh)
 PACKAGES.md       — подробный список пакетов, которые ставит setup.sh
 TOOLS-EXTRA.md    — описание каждого инструмента из tools-extra.sh
 ```
@@ -46,8 +46,20 @@ cd ~/fastinstall
 ### setup.sh
 
 ```bash
-./setup.sh    # установить пакеты
+./setup.sh        # TUI-диалог выбора пакетов, затем установка выбранного
+./setup.sh --all  # установить всё без диалога выбора (-y — короткая форма)
 ```
+
+Базовые предпосылки (Homebrew/flatpak, curl, git) ставятся всегда, до
+диалога — без них не работает ничего остального. Дальше — классический
+синий чекбокс-список (ncurses `dialog`, как в debconf/dpkg-reconfigure,
+Clonezilla live или установщике Ubuntu Server): стрелки — перемещение,
+Пробел — отметить/снять пункт, Enter — установить отмеченное, Esc/Cancel —
+отмена; печатать номера руками не нужно. `dialog` при первом обращении
+ставится автоматически (пакет есть в apt/dnf/pacman/zypper/apk и в
+Homebrew); если поставить не удалось — тихий откат на пронумерованный
+список без стрелок. Без TTY (например, запуск из другого скрипта) диалог
+пропускается, ставится всё.
 
 ### samba-share.sh
 
@@ -128,10 +140,15 @@ cd ~/fastinstall
 Releases.
 
 ```bash
-./tools-extra.sh              # поставить все инструменты
+./tools-extra.sh                # TUI-диалог выбора инструментов
+./tools-extra.sh --all          # поставить все инструменты без диалога
 ./tools-extra.sh bat yazi lnav  # поставить только перечисленные
 ./tools-extra.sh --list         # список с описаниями, ничего не ставить
 ```
+
+Диалог выбора — тот же, что и в `setup.sh` (см. выше); при явном
+перечислении инструментов в аргументах диалог не показывается. Без TTY
+ставятся все инструменты.
 
 ### tui-tools.sh
 

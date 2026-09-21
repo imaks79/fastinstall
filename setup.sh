@@ -2,9 +2,16 @@
 # Универсальный бутстрап окружения для UNIX-подобных ОС (macOS / Linux).
 #
 # Использование:
-#   ./setup.sh              — установить пакеты
+#   ./setup.sh              — TUI-диалог выбора пакетов, затем установка
+#   ./setup.sh --all        — установить всё без диалога выбора
+#   ./setup.sh -y           — то же самое, короткая форма
 #
-# Устанавливает: oh-my-zsh (+ плагины zsh-autosuggestions,
+# Диалог — синий чекбокс-список (ncurses dialog, как в debconf/Clonezilla/
+# установщике Ubuntu Server): стрелки — перемещение, Пробел — отметить/
+# снять пункт, Enter — установить отмеченное, Esc/Cancel — отмена.
+#
+# Устанавливает (через диалог выбора — можно снять любой пункт, кроме
+# базовых предпосылок): oh-my-zsh (+ плагины zsh-autosuggestions,
 # zsh-syntax-highlighting), oh-my-tmux, tpm (+ плагины tmux-sensible,
 # tmux-resurrect, tmux-continuum, tmux-yank, tmux-thumbs, tmux-fzf,
 # tmux-fzf-url, catppuccin-tmux, tmux-sessionx, tmux-floax), git, ssh, stow,
@@ -12,31 +19,84 @@
 # шрифты Hack/0xProto/JetBrainsMono Nerd Font; rust, uv, omp-manager.
 # Neovim IDE-ядро (AstroNvim/NvChad/LunarVim) сюда не входит — опционально
 # через `./tools-extra.sh ide` (диалог выбора).
-# zsh становится оболочкой по умолчанию (chsh).
-# На Linux дополнительно ставит flatpak + репозиторий flathub, на macOS — Homebrew.
+# zsh становится оболочкой по умолчанию (chsh), если выбран этот пункт.
+# На Linux дополнительно ставит flatpak + репозиторий flathub, на macOS — Homebrew
+# (это всегда, до диалога выбора — без них не работает ничего остального).
+# Без TTY (например, запуск из другого скрипта) диалог пропускается, ставится всё.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
 source "$SCRIPT_DIR/lib/packages.sh"
+source "$SCRIPT_DIR/lib/tui_select.sh"
 
+# Шаги, которые можно выбрать через TUI. ensure_prereqs сюда не входит —
+# он обязателен (Homebrew/flatpak, curl, git), без него не работает ничего
+# из списка ниже.
+OPTIONAL_STEP_NAMES=(
+    install_core_packages
+    set_default_shell_zsh
+    install_terminal
+    install_rust
+    install_uv
+    install_omp_manager
+    install_fonts
+    install_oh_my_zsh
+    install_oh_my_zsh_plugins
+    install_oh_my_tmux
+    install_tpm
+    install_tmux_plugins
+    install_alacritty_theme
+)
+OPTIONAL_STEP_DESCS=(
+    "Базовые пакеты: git, ssh, stow, mc, htop, nvim, tmux, zsh, pass, gnupg, eza, wireguard-tools"
+    "zsh — оболочка по умолчанию (chsh)"
+    "Терминал alacritty"
+    "Rust (rustup)"
+    "uv — менеджер Python-пакетов/окружений"
+    "omp-manager — TUI-мастер настройки Oh My Posh"
+    "Nerd Fonts: Hack, 0xProto, JetBrainsMono"
+    "oh-my-zsh"
+    "Плагины oh-my-zsh: zsh-autosuggestions, zsh-syntax-highlighting"
+    "oh-my-tmux"
+    "tpm — менеджер плагинов tmux"
+    "Плагины tmux: sensible, resurrect, continuum, yank, thumbs, fzf, fzf-url, catppuccin, sessionx, floax"
+    "Темы alacritty"
+)
+
+# cmd_install <install_all: 0|1>
 cmd_install() {
+    local install_all="$1"
     detect_os
-    step "ensure_prereqs"          ensure_prereqs
-    step "install_core_packages"   install_core_packages
-    step "set_default_shell_zsh"   set_default_shell_zsh
-    step "install_terminal"        install_terminal
-    step "install_rust"            install_rust
-    step "install_uv"              install_uv
-    step "install_omp_manager"     install_omp_manager
-    step "install_fonts"           install_fonts
-    step "install_oh_my_zsh"       install_oh_my_zsh
-    step "install_oh_my_zsh_plugins" install_oh_my_zsh_plugins
-    step "install_oh_my_tmux"      install_oh_my_tmux
-    step "install_tpm"             install_tpm
-    step "install_tmux_plugins"    install_tmux_plugins
-    step "install_alacritty_theme" install_alacritty_theme
+    step "ensure_prereqs" ensure_prereqs
+
+    local selected=("${OPTIONAL_STEP_NAMES[@]}")
+    if [[ "$install_all" != "1" ]]; then
+        if [[ -t 0 && -t 1 ]]; then
+            local items=() i
+            for ((i = 0; i < ${#OPTIONAL_STEP_NAMES[@]}; i++)); do
+                items+=("${OPTIONAL_STEP_NAMES[i]}" "${OPTIONAL_STEP_DESCS[i]}")
+            done
+            if tui_checklist "Выберите, что установить (setup.sh):" "${items[@]}"; then
+                selected=("${TUI_SELECTED[@]}")
+            else
+                info "Отменено, ничего (кроме базовых предпосылок) не устанавливаю."
+                exit 0
+            fi
+        else
+            warn "Нет TTY — диалог выбора пропущен, ставлю всё (используйте --all, чтобы убрать это предупреждение)"
+        fi
+    fi
+
+    if [[ ${#selected[@]} -eq 0 ]]; then
+        warn "Ничего не выбрано, установка пакетов пропущена."
+    fi
+
+    local name
+    for name in "${selected[@]}"; do
+        step "$name" "$name"
+    done
 
     echo
     ok "Готово."
@@ -56,13 +116,18 @@ cmd_install() {
     print_astra
 }
 
-case "${1:-install}" in
-    install) cmd_install ;;
-    -h|--help|help)
-        sed -n '2,10p' "$0"
-        ;;
-    *)
-        err "Неизвестная команда: $1 (доступно: install, help)"
-        exit 1
-        ;;
+CMD="install"
+INSTALL_ALL=0
+for arg in "$@"; do
+    case "$arg" in
+        --all|-y) INSTALL_ALL=1 ;;
+        install) CMD="install" ;;
+        -h|--help|help) CMD="help" ;;
+        *) err "Неизвестный аргумент: $arg (доступно: install, --all/-y, help)"; exit 1 ;;
+    esac
+done
+
+case "$CMD" in
+    install) cmd_install "$INSTALL_ALL" ;;
+    help) sed -n '2,25p' "$0" ;;
 esac

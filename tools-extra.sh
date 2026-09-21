@@ -9,9 +9,15 @@
 # в tool_desc() и TOOLS_EXTRA_NAMES.
 #
 # Использование:
-#   ./tools-extra.sh                  — поставить все инструменты
-#   ./tools-extra.sh bat yazi lnav     — поставить только перечисленные
-#   ./tools-extra.sh --list            — список с описаниями, ничего не ставить
+#   ./tools-extra.sh                  — TUI-диалог выбора инструментов
+#   ./tools-extra.sh --all            — поставить все инструменты без диалога
+#   ./tools-extra.sh bat yazi lnav    — поставить только перечисленные
+#   ./tools-extra.sh --list           — список с описаниями, ничего не ставить
+#
+# Диалог — синий чекбокс-список (ncurses dialog, как в debconf/Clonezilla/
+# установщике Ubuntu Server): стрелки — перемещение, Пробел — отметить/
+# снять пункт, Enter — установить отмеченное, Esc/Cancel — отмена.
+# Без TTY (например, запуск из другого скрипта) диалог пропускается, ставится всё.
 
 set -euo pipefail
 
@@ -19,9 +25,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
 source "$SCRIPT_DIR/lib/packages.sh"
 source "$SCRIPT_DIR/lib/tools_extra.sh"
+source "$SCRIPT_DIR/lib/tui_select.sh"
 
 usage() {
-    sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 list_tools() {
@@ -38,9 +45,37 @@ esac
 
 detect_os
 
-TARGETS=("$@")
+TARGETS=()
+INSTALL_ALL=0
+for arg in "$@"; do
+    case "$arg" in
+        --all) INSTALL_ALL=1 ;;
+        *) TARGETS+=("$arg") ;;
+    esac
+done
+
 if [[ ${#TARGETS[@]} -eq 0 ]]; then
-    TARGETS=("${TOOLS_EXTRA_NAMES[@]}")
+    if [[ "$INSTALL_ALL" == "1" ]]; then
+        TARGETS=("${TOOLS_EXTRA_NAMES[@]}")
+    elif [[ -t 0 && -t 1 ]]; then
+        items=()
+        for n in "${TOOLS_EXTRA_NAMES[@]}"; do
+            items+=("$n" "$(tool_desc "$n")")
+        done
+        if tui_checklist "Выберите инструменты для установки (tools-extra.sh):" "${items[@]}"; then
+            TARGETS=("${TUI_SELECTED[@]}")
+        else
+            info "Отменено, ничего не устанавливаю."
+            exit 0
+        fi
+        if [[ ${#TARGETS[@]} -eq 0 ]]; then
+            warn "Ничего не выбрано, установка пропущена."
+            exit 0
+        fi
+    else
+        warn "Нет TTY — диалог выбора пропущен, ставлю все инструменты (используйте --all, чтобы убрать это предупреждение)"
+        TARGETS=("${TOOLS_EXTRA_NAMES[@]}")
+    fi
 fi
 
 for t in "${TARGETS[@]}"; do

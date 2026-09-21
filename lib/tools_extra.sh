@@ -571,7 +571,12 @@ install_herdr() {
     install_gh_release_bin "herdrdev/herdr" "herdr" "herdr-linux-${arch}" ""
 }
 
-TOOLS_EXTRA_NAMES=(tldr duf gpg-tui termusic vortix wlctl lazygit lazydocker k9s termscp lnav dust yazi fastfetch bottom gping trippy bandwhich bat chafa pdftoipe 7zip slumber mangofetch gonzo keyward ssh-list lazyssh sshs herdr ide isd)
+# chafa/pdftoipe/7zip идут сразу за yazi и с отступом в описании (см.
+# tool_desc()) — визуально подпункты yazi в TUI-чеклисте (у dialog нет
+# настоящего дерева, только плоский список, поэтому "вложенность" — это
+# порядок + отступ). При этом отмечаются независимо, как и всё остальное —
+# группировка чисто для навигации по списку, а не автоматический бандл.
+TOOLS_EXTRA_NAMES=(tldr duf gpg-tui termusic vortix wlctl lazygit lazydocker k9s termscp lnav dust yazi chafa pdftoipe 7zip fastfetch bottom gping trippy bandwhich bat slumber mangofetch gonzo keyward ssh-list lazyssh sshs herdr ide isd)
 
 tool_desc() {
     case "$1" in
@@ -588,15 +593,15 @@ tool_desc() {
         lnav)     echo "Просмотр и анализ логов с подсветкой и SQL-запросами" ;;
         dust)     echo "Наглядная замена du — что занимает место на диске" ;;
         yazi)     echo "Быстрый терминальный файловый менеджер" ;;
+        chafa)    echo "  Показ картинок прямо в терминале" ;;
+        pdftoipe) echo "  Конвертация PDF в XML для редактора Ipe" ;;
+        7zip)     echo "  Архиватор 7-Zip" ;;
         fastfetch) echo "Информация о системе при старте терминала (замена neofetch)" ;;
         bottom)   echo "Монитор процессов/ресурсов (замена top/htop), бинарь btm" ;;
         gping)    echo "ping с графиком задержки в реальном времени" ;;
         trippy)   echo "traceroute + ping в одном TUI, бинарь trip" ;;
         bandwhich) echo "Кто из процессов сколько сетевого трафика потребляет" ;;
         bat)      echo "cat с подсветкой синтаксиса и git-диффом (на Debian/Ubuntu бинарь batcat)" ;;
-        chafa)    echo "Показ картинок прямо в терминале" ;;
-        pdftoipe) echo "Конвертация PDF в XML для редактора Ipe" ;;
-        7zip)     echo "Архиватор 7-Zip" ;;
         slumber)  echo "Терминальный REST/gRPC-клиент (замена Postman/Insomnia в TUI)" ;;
         mangofetch) echo "TUI-загрузчик медиа (YouTube, torrent, SoundCloud, Instagram) поверх yt-dlp/ffmpeg" ;;
         gonzo)    echo "TUI для анализа логов в реальном времени (k9s-стиль), нативная поддержка Kubernetes и OTLP" ;;
