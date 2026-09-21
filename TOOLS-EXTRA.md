@@ -2,8 +2,9 @@
 
 Дополнительные TUI/CLI-инструменты, не входящие в базовый набор `setup.sh`.
 Ставятся отдельно, потому что не всем нужны — `./tools-extra.sh --list`
-показывает этот же список в терминале, `./tools-extra.sh <имя> ...` ставит
-только выбранные.
+показывает этот же список в терминале (с описанием, языком реализации,
+поддерживаемой ОС и ссылкой на первоисточник каждого инструмента),
+`./tools-extra.sh <имя> ...` ставит только выбранные.
 
 Для каждого инструмента скрипт сначала пробует нативный пакетный менеджер
 (brew/apt/dnf/pacman/zypper/apk), и только если пакета там нет — переходит к
@@ -14,6 +15,8 @@ Releases). `cargo` должен быть уже установлен — его 
 
 | Инструмент | Что делает | Fallback, если нет в пакетном менеджере |
 |---|---|---|
+| **[alacritty](https://github.com/alacritty/alacritty)** | GPU-терминал (тема [alacritty-theme](https://github.com/alacritty/alacritty-theme) ставится отдельно, в `setup.sh` — см. [PACKAGES.md](PACKAGES.md#клонируемые-git-репозитории)) | на macOS — `brew install --cask alacritty`; на Linux — нативный пакет, иначе flatpak `org.alacritty.Alacritty` |
+| **[omp-manager](https://github.com/psmux/omp-manager)** | TUI-мастер настройки [Oh My Posh](https://ohmyposh.dev/): подбор Nerd Font, темы, прописывает инициализацию в шеллы (сам Oh My Posh ставится в `setup.sh`, см. [PACKAGES.md](PACKAGES.md#языки-и-инструменты-разработки)) | `cargo install omp-manager` (все ОС) — нет ни в одном пакетном менеджере, только crates.io |
 | **tldr** | Короткие практические примеры для команд вместо полного `man` | `cargo install tealdeer` (на zypper пакет уже называется `tealdeer`) |
 | **duf** | Диски и точки монтирования — наглядная замена `df` | нет (Go-проект, не публикуется на crates.io); на apk ставьте вручную |
 | **gpg-tui** | Управление ключами GnuPG в TUI | `cargo install gpg-tui` |
@@ -26,10 +29,7 @@ Releases). `cargo` должен быть уже установлен — его 
 | **termscp** | Терминальный SCP/SFTP/FTP/S3-клиент | `cargo install termscp` |
 | **lnav** | Просмотр и анализ логов: подсветка, SQL-запросы к логам | — (есть везде) |
 | **dust** | Наглядная замена `du` — что занимает место на диске | `cargo install du-dust` (бинарь всё равно называется `dust`) |
-| **yazi** | Быстрый терминальный файловый менеджер | `cargo install yazi-fm yazi-cli` |
-| &nbsp;&nbsp;↳ **chafa** | Показ картинок прямо в терминале | — (есть везде) |
-| &nbsp;&nbsp;↳ **pdftoipe** | Конвертация PDF в XML для редактора Ipe | нет; есть только в brew и apt, на dnf/pacman/zypper/apk ставьте из исходников |
-| &nbsp;&nbsp;↳ **7zip** | Архиватор 7-Zip | — (есть везде под разными именами: `sevenzip`/`p7zip-full`/`7zip`/`p7zip`) |
+| **[yazi](https://yazi-rs.github.io/docs/installation/)** | Быстрый терминальный файловый менеджер | ставится строго по официальной доке: nативный пакет (brew/pacman/zypper/apk), на apt — официальный репозиторий `yazi-rs.github.io/builds`, на dnf — copr `lihaohong/yazi`; если ничего из этого не подошло — `cargo install --force yazi-build` |
 | **fastfetch** | Информация о системе при старте терминала (замена neofetch) | `.deb` с GitHub Releases (только там, где есть apt) |
 | **bottom** | Монитор процессов и ресурсов (замена top/htop), бинарь `btm` | `cargo install bottom` |
 | **gping** | `ping` с графиком задержки в реальном времени | `cargo install gping` |
@@ -40,12 +40,31 @@ Releases). `cargo` должен быть уже установлен — его 
 | **[mangofetch](https://github.com/julesklord/mangofetch)** | TUI-загрузчик медиа (YouTube, torrent, SoundCloud, Instagram) — оборачивает `yt-dlp`/`ffmpeg`, сам докачивает недостающие бинари | `cargo install mangofetch` (нет ни в одном пакетном менеджере — новый проект) |
 | **[gonzo](https://github.com/control-theory/gonzo)** | TUI для анализа логов в реальном времени в стиле k9s: графики, Kubernetes/OTLP из коробки, AI-инсайты | нативного пакета нет нигде на Linux — бинарь с GitHub Releases с проверкой sha256 (на macOS есть в brew) |
 | **[keyward](https://github.com/gateway-of-last-resort/keyward)** | TUI для управления SSH-ключами: редактирование `~/.ssh/config`, аудит безопасности, шифрованные бэкапы | на macOS — `brew install gateway-of-last-resort/tap/keyward` (свой tap); на Linux нативного пакета нет — бинарь с GitHub Releases с проверкой sha256 |
-| **[ssh-list](https://github.com/akinoiro/ssh-list)** | TUI-менеджер SSH-подключений: добавление/сортировка/поиск, импорт хостов из `~/.ssh/config` | `cargo install ssh-list` (пакет есть на crates.io); на macOS — `brew install akinoiro/tap/ssh-list` (свой tap); в AUR/PPA есть, но через пакетный менеджер напрямую не ставится (нужны `paru`/PPA-репозиторий) |
 | **[lazyssh](https://github.com/Adembc/lazyssh)** | TUI для SSH-подключений в стиле lazydocker/k9s | на macOS — `brew install Adembc/homebrew-tap/lazyssh` (свой tap); на Linux нативного пакета нет и `go install` не годится (в `go.mod` есть `replace` на форкнутый модуль) — бинарь с GitHub Releases с проверкой sha256 по `checksums.txt` |
-| **[sshs](https://github.com/quantumsheep/sshs)** | TUI-выбор хостов из `~/.ssh/config` для быстрого подключения по SSH | Rust-проект, но НЕ на crates.io (только `cargo install --git`) — есть в brew (без tap) и в официальном репозитории Arch (`pacman -S sshs`); на apt — `.deb` с GitHub Releases, на dnf/zypper/apk — голый бинарь с релизов с проверкой sha256 |
 | **[herdr](https://herdr.dev)** | Агенто-осведомлённый мультиплексор терминала для coding-агентов: держит панели живыми на сервере при закрытии клиента/обрыве SSH, агенты управляют им через CLI/socket API | в `homebrew/core` под своим именем (`brew install herdr`); на Linux нативного пакета нет — голый бинарь с GitHub Releases без проверки sha256 (файла контрольных сумм релиз не публикует). **Не путать** с одноимённым, но не связанным крейтом на crates.io (`ogulcancelik/herdr`) — он сюда не используется как фолбэк |
 | **ide** | Neovim IDE — интерактивный диалог: [AstroNvim](https://docs.astronvim.com/) / [NvChad](https://nvchad.com/docs/quickstart/install) / [LunarVim](https://www.lunarvim.org/docs/installation) / очистить редактор | нет (спрашивает номер варианта в терминале), см. раздел ниже |
 | **[isd](https://github.com/kainctl/isd)** | TUI для systemd-юнитов: fuzzy-поиск, автообновляемый предпросмотр, умный `sudo`; **только Linux** | нет пакетов нигде — ставится через `uv tool install isd-tui` (Python-проект) |
+
+## yazi — опциональные зависимости
+
+Ставятся автоматически вместе с `./tools-extra.sh yazi`, по списку Optional
+Dependencies из [официальной доки](https://yazi-rs.github.io/docs/installation/) —
+отдельных пунктов меню для них нет, каждая просто расширяет yazi конкретной
+фичей превью, и промах одной из них не мешает остальным:
+
+| Зависимость | Для чего |
+|---|---|
+| [`ffmpeg`](https://www.ffmpeg.org/) | превью видео |
+| [7-Zip](https://www.7-zip.org/) (non-standalone, `sevenzip`/`p7zip`) | распаковка и превью архивов |
+| [`jq`](https://jqlang.github.io/jq/) | превью JSON |
+| [`poppler`](https://poppler.freedesktop.org/) | превью PDF |
+| [`fd`](https://github.com/sharkdp/fd) | поиск файлов |
+| [`ripgrep`](https://github.com/BurntSushi/ripgrep) | поиск по содержимому файлов |
+| [`fzf`](https://github.com/junegunn/fzf) | быстрая навигация по поддереву |
+| [`zoxide`](https://github.com/ajeetdsouza/zoxide) | навигация по истории каталогов |
+| [`resvg`](https://github.com/linebender/resvg) | превью SVG |
+| [ImageMagick](https://imagemagick.org/) | превью шрифтов, HEIC, JPEG XL |
+| `xclip` / `wl-clipboard` | буфер обмена (только Linux) |
 
 ## ide — выбор Neovim IDE
 
@@ -123,7 +142,10 @@ LunarVim в этот маркер не входит — у него свой `NV
 
 1. Имя — в массив `TOOLS_EXTRA_NAMES` (`lib/tools_extra.sh`).
 2. Описание — строка в `case` внутри `tool_desc()`.
-3. Установка — строка в `case` внутри `install_tool()`:
+3. Ссылка на первоисточник (git-репозиторий, а если нет — сайт разработчика)
+   — строка в `case` внутри `tool_url()`, язык реализации — в `tool_lang()`,
+   поддерживаемая ОС — в `tool_os()` (используются в `./tools-extra.sh --list`).
+4. Установка — строка в `case` внутри `install_tool()`:
    - если пакет есть хоть где-то нативно (или можно собрать `cargo install`) —
      `pkg_or_cargo <бинарь> <cargo-крейт> <brew> <apt> <dnf> <pacman> <zypper> <apk>`
      (пустая строка = "пакета здесь нет");

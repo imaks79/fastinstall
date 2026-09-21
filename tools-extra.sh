@@ -6,13 +6,16 @@
 # бинарь с GitHub Releases (lazygit/lazydocker/k9s/fastfetch). Список сделан
 # таблицей одной функции (install_tool в lib/tools_extra.sh) специально для
 # дальнейшего расширения — дописать инструмент это одна строка там плюс одна
-# в tool_desc() и TOOLS_EXTRA_NAMES.
+# в tool_desc()/tool_url()/tool_lang() и TOOLS_EXTRA_NAMES.
 #
 # Использование:
 #   ./tools-extra.sh                  — TUI-диалог выбора инструментов
 #   ./tools-extra.sh --all            — поставить все инструменты без диалога
 #   ./tools-extra.sh bat yazi lnav    — поставить только перечисленные
-#   ./tools-extra.sh --list           — список с описаниями, ничего не ставить
+#   ./tools-extra.sh --list           — список с описанием, языком,
+#                                        поддерживаемой ОС и ссылкой на
+#                                        первоисточник каждого инструмента,
+#                                        ничего не ставить
 #
 # Диалог — синий чекбокс-список (ncurses dialog, как в debconf/Clonezilla/
 # установщике Ubuntu Server): стрелки — перемещение, Пробел — отметить/
@@ -34,7 +37,11 @@ usage() {
 list_tools() {
     local n
     for n in "${TOOLS_EXTRA_NAMES[@]}"; do
-        printf '  %-10s %s\n' "$n" "$(tool_desc "$n")"
+        printf '%s\n' "$n"
+        printf '    %s\n' "$(tool_desc "$n")"
+        printf '    Язык:          %s\n' "$(tool_lang "$n")"
+        printf '    ОС:            %s\n' "$(tool_os "$n")"
+        printf '    Первоисточник: %s\n' "$(tool_url "$n")"
     done
 }
 

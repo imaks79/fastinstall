@@ -176,6 +176,45 @@ install_gh_release_deb() {
     fi
 }
 
+# alacritty — GPU-терминал; переехал сюда из setup.sh, т.к. не всем нужен
+# именно alacritty. Тема alacritty-theme сюда не входит — она осталась в
+# setup.sh (install_alacritty_theme() в lib/packages.sh), отдельным шагом.
+install_alacritty() {
+    if command -v alacritty >/dev/null 2>&1; then
+        ok "alacritty уже установлен"
+    elif [[ "$OS" == "macos" ]]; then
+        pkg_cask alacritty ""
+    else
+        pkg_native "" alacritty alacritty alacritty alacritty alacritty || pkg_cask "" org.alacritty.Alacritty
+    fi
+}
+
+# omp-manager — TUI-мастер настройки Oh My Posh (темы, шрифты, шеллы);
+# переехал сюда из setup.sh — сам Oh My Posh (движок темы шелла) ставится
+# там (install_oh_my_posh() в lib/packages.sh, по ohmyposh.dev), а этот
+# мастер уже не всем нужен, конфигурировать можно и руками. Только cargo
+# install — на crates.io, в системных пакетных менеджерах пакета нет.
+install_omp_manager() {
+    if command -v omp-manager >/dev/null 2>&1; then
+        ok "omp-manager уже установлен"
+        return 0
+    fi
+    if ! ensure_cargo_in_path; then
+        warn "cargo не найден, пропускаю omp-manager"
+        MANUAL_TODO+=("omp-manager -> https://github.com/psmux/omp-manager (нужен rust/cargo)")
+        return 1
+    fi
+    info "Устанавливаю omp-manager (TUI-мастер настройки Oh My Posh: темы, шрифты, шеллы)..."
+    warn_if_low_disk_space /tmp
+    if retry 3 cargo_install_clean omp-manager; then
+        ok "omp-manager установлен"
+    else
+        warn "cargo install omp-manager не удался"
+        MANUAL_TODO+=("omp-manager -> https://github.com/psmux/omp-manager")
+        return 1
+    fi
+}
+
 install_lazygit() {
     command -v lazygit >/dev/null 2>&1 && { ok "lazygit уже установлен"; return 0; }
     if pkg_native lazygit "" "" lazygit lazygit lazygit && command -v lazygit >/dev/null 2>&1; then
@@ -237,6 +276,10 @@ install_k9s() {
     install_gh_release_deb "derailed/k9s" "k9s" "k9s_linux_${arch}.deb"
 }
 
+# 7-Zip нужен не отдельным пунктом меню, а как зависимость yazi (превью и
+# распаковка архивов) — brew-имя специально "sevenzip", НЕ "7zip" (то —
+# standalone-версия, yazi по официальной доке требует non-standalone), см.
+# install_yazi_deps().
 install_7zip() {
     if command -v 7z >/dev/null 2>&1 || command -v 7zz >/dev/null 2>&1; then
         ok "7-zip уже установлен"
@@ -250,6 +293,81 @@ install_7zip() {
         MANUAL_TODO+=("7zip -> https://7-zip.org (или p7zip для вашего дистрибутива)")
         return 1
     fi
+}
+
+# install_yazi_deps — опциональные зависимости yazi по официальной доке
+# (https://yazi-rs.github.io/docs/installation/, раздел Optional dependencies):
+# каждая по отдельности необязательна (yazi запустится и без них), но без
+# неё отваливается конкретное превью/фича. Отдельных пунктов меню для них
+# нет — ставятся как часть install_tool(yazi), падение одной зависимости не
+# должно останавливать установку остальных (поэтому не step(), а просто
+# лучшее усилие: предупреждение + MANUAL_TODO уходит из каждой pkg_*-обёртки
+# самостоятельно, install_yazi_deps() дальше не проверяет коды возврата).
+install_yazi_deps() {
+    info "Зависимости yazi: ffmpeg, 7-zip, jq, poppler, fd, ripgrep, fzf, zoxide, resvg, imagemagick$( [[ "$OS" == "linux" ]] && echo ', xclip/wl-clipboard' )"
+    pkg_native ffmpeg      ffmpeg          ffmpeg      ffmpeg  ffmpeg   ffmpeg
+    install_7zip
+    pkg_native jq          jq              jq          jq      jq       jq
+    pkg_native poppler     poppler-utils   poppler-utils poppler poppler-tools poppler-utils
+    pkg_native fd          fd-find         fd-find     fd      fd       fd
+    pkg_native ripgrep     ripgrep         ripgrep     ripgrep ripgrep  ripgrep
+    pkg_native fzf         fzf             fzf         fzf     fzf      fzf
+    pkg_native zoxide      zoxide          zoxide      zoxide  zoxide   zoxide
+    pkg_or_cargo resvg resvg resvg "" "" "" "" ""
+    pkg_native imagemagick imagemagick     ImageMagick imagemagick ImageMagick imagemagick
+    if [[ "$OS" == "linux" ]]; then
+        pkg_native "" xclip xclip xclip xclip xclip
+        pkg_native "" wl-clipboard wl-clipboard wl-clipboard wl-clipboard wl-clipboard
+    fi
+}
+
+# yazi — официальная установка по https://yazi-rs.github.io/docs/installation/:
+# на macOS и там, где есть нативный пакет (pacman/zypper/apk — под именем
+# "yazi"), ставим им; на Debian/Ubuntu (apt) официального пакета в самих
+# репозиториях нет — доки предлагают собственный apt-репозиторий
+# yazi-rs.github.io/builds (stable), подключаем его так же, как доки; на
+# Fedora/dnf — через copr lihaohong/yazi (тоже по доке). Если ничего из
+# этого не сработало (или пакетного менеджера с готовым путём нет вообще) —
+# фолбэк тот же, что рекомендует официальная дока для cargo: `cargo install
+# --force yazi-build` (единый мета-крейт, а не yazi-fm+yazi-cli по отдельности).
+install_yazi() {
+    if command -v yazi >/dev/null 2>&1; then
+        ok "yazi уже установлен"
+    elif [[ "$OS" == "macos" ]]; then
+        pkg_native yazi "" "" "" "" ""
+    elif [[ "$PKG_MANAGER" == "apt" ]]; then
+        info "yazi недоступен в стандартных репозиториях apt, подключаю официальный репозиторий yazi-rs.github.io/builds"
+        curl -fsSL https://yazi-rs.github.io/builds/yazi-keyring.gpg | $SUDO tee /usr/share/keyrings/yazi-keyring.gpg >/dev/null
+        echo 'deb [signed-by=/usr/share/keyrings/yazi-keyring.gpg] https://yazi-rs.github.io/builds/ stable main' | $SUDO tee /etc/apt/sources.list.d/yazi.list >/dev/null
+        $SUDO apt-get update -y && $SUDO apt-get install -y yazi
+    elif [[ "$PKG_MANAGER" == "dnf" ]]; then
+        info "yazi недоступен напрямую в dnf, подключаю copr lihaohong/yazi (по официальной доке)"
+        $SUDO dnf copr enable -y lihaohong/yazi
+        $SUDO dnf install -y yazi
+    else
+        pkg_native "" "" "" yazi yazi yazi
+    fi
+
+    if ! command -v yazi >/dev/null 2>&1; then
+        if ensure_cargo_in_path; then
+            info "yazi недоступен через пакетный менеджер, ставлю: cargo install --force yazi-build"
+            ensure_build_toolchain
+            warn_if_low_disk_space /tmp
+            if ! cargo_install_clean --force yazi-build; then
+                warn "cargo install --force yazi-build не удался"
+                MANUAL_TODO+=("yazi -> https://yazi-rs.github.io/docs/installation/")
+            fi
+        else
+            warn "yazi недоступен через пакетный менеджер, а cargo не найден"
+            MANUAL_TODO+=("yazi -> https://yazi-rs.github.io/docs/installation/ (нужен rust/cargo, если нет нативного пакета)")
+        fi
+    fi
+
+    if command -v yazi >/dev/null 2>&1; then
+        ok "yazi установлен"
+    fi
+
+    install_yazi_deps
 }
 
 install_fastfetch() {
@@ -526,29 +644,6 @@ install_lazyssh() {
     install_gh_release_tar "Adembc/lazyssh" "lazyssh" "lazyssh_Linux_${arch}.tar.gz" "checksums.txt"
 }
 
-# sshs — Rust-проект, но НЕ публикуется на crates.io (только `cargo install
-# --git`, см. README), поэтому обычный pkg_or_cargo тут не годится. Официально
-# в brew (без tap) и в официальном репозитории Arch (pacman -S sshs напрямую),
-# на apt — только через .deb с релизов, на остальных (dnf/zypper/apk) — голый
-# бинарь с релизов (у каждого свой .sha256-файл, не общий checksums.txt).
-install_sshs() {
-    command -v sshs >/dev/null 2>&1 && { ok "sshs уже установлен"; return 0; }
-    if pkg_native sshs "" "" sshs "" "" && command -v sshs >/dev/null 2>&1; then
-        ok "sshs установлен"; return 0
-    fi
-    [[ "$OS" == "linux" ]] || { MANUAL_TODO+=("sshs -> https://github.com/quantumsheep/sshs#how-to-install"); return 1; }
-    local arch; case "$(uname -m)" in
-        x86_64|amd64) arch=amd64 ;;
-        aarch64|arm64) arch=arm64 ;;
-        *) MANUAL_TODO+=("sshs -> https://github.com/quantumsheep/sshs/releases"); return 1 ;;
-    esac
-    if [[ "$PKG_MANAGER" == "apt" ]]; then
-        install_gh_release_deb "quantumsheep/sshs" "sshs" "sshs-linux-${arch}.deb"
-        return $?
-    fi
-    install_gh_release_bin "quantumsheep/sshs" "sshs" "sshs-linux-${arch}" "sshs-linux-${arch}.sha256"
-}
-
 # herdr (herdr.dev) — агенто-осведомлённый мультиплексор терминала для
 # коалиций coding-агентов, живёт в homebrew/core под своим именем, поэтому
 # на macOS ставится нативно. Одноимённый крейт на crates.io
@@ -571,15 +666,12 @@ install_herdr() {
     install_gh_release_bin "herdrdev/herdr" "herdr" "herdr-linux-${arch}" ""
 }
 
-# chafa/pdftoipe/7zip идут сразу за yazi и с отступом в описании (см.
-# tool_desc()) — визуально подпункты yazi в TUI-чеклисте (у dialog нет
-# настоящего дерева, только плоский список, поэтому "вложенность" — это
-# порядок + отступ). При этом отмечаются независимо, как и всё остальное —
-# группировка чисто для навигации по списку, а не автоматический бандл.
-TOOLS_EXTRA_NAMES=(tldr duf gpg-tui termusic vortix wlctl lazygit lazydocker k9s termscp lnav dust yazi chafa pdftoipe 7zip fastfetch bottom gping trippy bandwhich bat slumber mangofetch gonzo keyward ssh-list lazyssh sshs herdr ide isd)
+TOOLS_EXTRA_NAMES=(alacritty omp-manager tldr duf gpg-tui termusic vortix wlctl lazygit lazydocker k9s termscp lnav dust yazi fastfetch bottom gping trippy bandwhich bat slumber mangofetch gonzo keyward lazyssh herdr ide isd)
 
 tool_desc() {
     case "$1" in
+        alacritty) echo "GPU-терминал (тема alacritty-theme ставится отдельно, в setup.sh)" ;;
+        omp-manager) echo "TUI-мастер настройки Oh My Posh: темы, шрифты, шеллы (сам Oh My Posh — в setup.sh)" ;;
         tldr)     echo "Короткие практические примеры для команд вместо полного man" ;;
         duf)      echo "Диски и точки монтирования — наглядная замена df" ;;
         gpg-tui)  echo "Управление ключами GnuPG" ;;
@@ -593,9 +685,6 @@ tool_desc() {
         lnav)     echo "Просмотр и анализ логов с подсветкой и SQL-запросами" ;;
         dust)     echo "Наглядная замена du — что занимает место на диске" ;;
         yazi)     echo "Быстрый терминальный файловый менеджер" ;;
-        chafa)    echo "  Показ картинок прямо в терминале" ;;
-        pdftoipe) echo "  Конвертация PDF в XML для редактора Ipe" ;;
-        7zip)     echo "  Архиватор 7-Zip" ;;
         fastfetch) echo "Информация о системе при старте терминала (замена neofetch)" ;;
         bottom)   echo "Монитор процессов/ресурсов (замена top/htop), бинарь btm" ;;
         gping)    echo "ping с графиком задержки в реальном времени" ;;
@@ -606,12 +695,100 @@ tool_desc() {
         mangofetch) echo "TUI-загрузчик медиа (YouTube, torrent, SoundCloud, Instagram) поверх yt-dlp/ffmpeg" ;;
         gonzo)    echo "TUI для анализа логов в реальном времени (k9s-стиль), нативная поддержка Kubernetes и OTLP" ;;
         keyward)  echo "TUI для управления SSH-ключами, ~/.ssh/config, аудита безопасности и шифрованных бэкапов" ;;
-        ssh-list) echo "TUI-менеджер SSH-подключений: добавление/сортировка/поиск, импорт из ~/.ssh/config" ;;
         lazyssh)  echo "TUI для SSH-подключений в стиле lazydocker/k9s" ;;
-        sshs)     echo "TUI-выбор хостов из ~/.ssh/config для быстрого подключения по SSH" ;;
         herdr)    echo "Агенто-осведомлённый мультиплексор терминала для coding-агентов (herdr.dev)" ;;
         ide)      echo "Neovim IDE — диалог выбора: AstroNvim / NvChad / LunarVim / очистить редактор" ;;
         isd)      echo "TUI для systemd-юнитов: fuzzy-поиск, автообновляемый предпросмотр, умный sudo (только Linux)" ;;
+        *) return 1 ;;
+    esac
+}
+
+# tool_url <имя> — первоисточник: git-репозиторий, а если его нет — сайт
+# разработчика. Используется в `./tools-extra.sh --list`.
+tool_url() {
+    case "$1" in
+        alacritty) echo "https://github.com/alacritty/alacritty" ;;
+        omp-manager) echo "https://github.com/psmux/omp-manager" ;;
+        tldr)      echo "https://github.com/tealdeer-rs/tealdeer" ;;
+        duf)       echo "https://github.com/muesli/duf" ;;
+        gpg-tui)   echo "https://github.com/orhun/gpg-tui" ;;
+        termusic)  echo "https://github.com/tramhao/termusic" ;;
+        vortix)    echo "https://github.com/Harry-kp/vortix" ;;
+        wlctl)     echo "https://github.com/aashish-thapa/wlctl" ;;
+        lazygit)   echo "https://github.com/jesseduffield/lazygit" ;;
+        lazydocker) echo "https://github.com/jesseduffield/lazydocker" ;;
+        k9s)       echo "https://github.com/derailed/k9s" ;;
+        termscp)   echo "https://github.com/veeso/termscp" ;;
+        lnav)      echo "https://github.com/tstack/lnav" ;;
+        dust)      echo "https://github.com/bootandy/dust" ;;
+        yazi)      echo "https://github.com/sxyazi/yazi" ;;
+        fastfetch) echo "https://github.com/fastfetch-cli/fastfetch" ;;
+        bottom)    echo "https://github.com/ClementTsang/bottom" ;;
+        gping)     echo "https://github.com/orf/gping" ;;
+        trippy)    echo "https://github.com/fujiapple852/trippy" ;;
+        bandwhich) echo "https://github.com/imsnif/bandwhich" ;;
+        bat)       echo "https://github.com/sharkdp/bat" ;;
+        slumber)   echo "https://github.com/LucasPickering/slumber" ;;
+        mangofetch) echo "https://github.com/julesklord/mangofetch" ;;
+        gonzo)     echo "https://github.com/control-theory/gonzo" ;;
+        keyward)   echo "https://github.com/gateway-of-last-resort/keyward" ;;
+        lazyssh)   echo "https://github.com/Adembc/lazyssh" ;;
+        herdr)     echo "https://herdr.dev" ;;
+        ide)       echo "https://docs.astronvim.com/ | https://nvchad.com/docs/quickstart/install | https://www.lunarvim.org/docs/installation" ;;
+        isd)       echo "https://github.com/kainctl/isd" ;;
+        *) return 1 ;;
+    esac
+}
+
+# tool_lang <имя> — основной язык реализации. "ide" — не программа, а
+# диалог выбора между тремя (у каждой свой язык, см. tool_url), поэтому
+# честного одного ответа для него нет.
+tool_lang() {
+    case "$1" in
+        alacritty) echo "Rust" ;;
+        omp-manager) echo "Rust" ;;
+        tldr)      echo "Rust (tealdeer)" ;;
+        duf)       echo "Go" ;;
+        gpg-tui)   echo "Rust" ;;
+        termusic)  echo "Rust" ;;
+        vortix)    echo "Rust" ;;
+        wlctl)     echo "Rust" ;;
+        lazygit)   echo "Go" ;;
+        lazydocker) echo "Go" ;;
+        k9s)       echo "Go" ;;
+        termscp)   echo "Rust" ;;
+        lnav)      echo "C++" ;;
+        dust)      echo "Rust" ;;
+        yazi)      echo "Rust" ;;
+        fastfetch) echo "C" ;;
+        bottom)    echo "Rust" ;;
+        gping)     echo "Rust" ;;
+        trippy)    echo "Rust" ;;
+        bandwhich) echo "Rust" ;;
+        bat)       echo "Rust" ;;
+        slumber)   echo "Rust" ;;
+        mangofetch) echo "Rust" ;;
+        gonzo)     echo "Go" ;;
+        keyward)   echo "Go" ;;
+        lazyssh)   echo "Go" ;;
+        herdr)     echo "Rust" ;;
+        ide)       echo "разное (Lua-конфиги)" ;;
+        isd)       echo "Python" ;;
+        *) return 1 ;;
+    esac
+}
+
+# tool_os <имя> — какие ОС поддерживает install_tool() для этого инструмента
+# (не про сам проект вообще — bandwhich, например, кросс-платформенный сам
+# по себе, но в install_tool() ставится только там, где у него есть
+# пакет/бинарь через уже реализованные пути). Используется в
+# `./tools-extra.sh --list`.
+tool_os() {
+    case "$1" in
+        wlctl) echo "только Linux (нужен NetworkManager)" ;;
+        isd)   echo "только Linux (нужен systemd)" ;;
+        alacritty|omp-manager|tldr|duf|gpg-tui|termusic|vortix|lazygit|lazydocker|k9s|termscp|lnav|dust|yazi|fastfetch|bottom|gping|trippy|bandwhich|bat|slumber|mangofetch|gonzo|keyward|lazyssh|herdr|ide)
+            echo "macOS + Linux" ;;
         *) return 1 ;;
     esac
 }
@@ -622,6 +799,8 @@ tool_desc() {
 install_tool() {
     local name="$1"
     case "$name" in
+        alacritty) install_alacritty ;;
+        omp-manager) install_omp_manager ;;
         tldr)      pkg_or_cargo tldr     tealdeer  tldr   tldr tldr tldr tealdeer "" ;;
         duf)       pkg_or_cargo duf      ""        duf    duf  duf  duf  duf      "" ;;
         gpg-tui)   pkg_or_cargo gpg-tui  gpg-tui   gpg-tui "" "" gpg-tui gpg-tui gpg-tui ;;
@@ -639,23 +818,18 @@ install_tool() {
         termscp)   pkg_or_cargo termscp termscp termscp "" "" termscp termscp "" ;;
         lnav)      pkg_or_cargo lnav     ""      lnav   lnav lnav lnav lnav lnav ;;
         dust)      pkg_or_cargo dust     du-dust dust   ""   du-dust dust dust dust ;;
-        yazi)      pkg_or_cargo yazi     "yazi-fm yazi-cli" yazi "" "" yazi yazi yazi ;;
+        yazi)      install_yazi ;;
         fastfetch) install_fastfetch ;;
         bottom)    pkg_or_cargo btm      bottom  bottom ""   ""   bottom bottom bottom ;;
         gping)     pkg_or_cargo gping    gping   gping  gping ""  gping gping gping ;;
         trippy)    pkg_or_cargo trip     trippy  trippy ""   ""   trippy trippy "" ;;
         bandwhich) pkg_or_cargo bandwhich bandwhich bandwhich "" "" bandwhich "" bandwhich ;;
         bat)       pkg_or_cargo bat      ""      bat    bat  bat  bat  bat  bat ;;
-        chafa)     pkg_or_cargo chafa    ""      chafa  chafa chafa chafa chafa chafa ;;
-        pdftoipe)  pkg_or_cargo pdftoipe ""      pdftoipe pdftoipe "" "" "" "" ;;
-        7zip)      install_7zip ;;
         slumber)   pkg_or_cargo slumber  slumber slumber "" "" slumber "" "" ;;
         mangofetch) pkg_or_cargo mangofetch mangofetch "" "" "" "" "" "" ;;
         gonzo)     install_gonzo ;;
         keyward)   install_keyward ;;
-        ssh-list)  pkg_or_cargo ssh-list ssh-list "akinoiro/tap/ssh-list" "" "" "" "" "" ;;
         lazyssh)   install_lazyssh ;;
-        sshs)      install_sshs ;;
         herdr)     install_herdr ;;
         ide)       install_ide ;;
         isd)       install_isd ;;

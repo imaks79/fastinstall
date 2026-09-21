@@ -153,19 +153,6 @@ set_default_shell_zsh() {
     fi
 }
 
-install_terminal() {
-    info "alacritty"
-    if ! command -v alacritty >/dev/null 2>&1; then
-        if [[ "$OS" == "macos" ]]; then
-            pkg_cask alacritty ""
-        else
-            pkg_native "" alacritty alacritty alacritty alacritty alacritty || pkg_cask "" org.alacritty.Alacritty
-        fi
-    else
-        ok "alacritty уже установлен"
-    fi
-}
-
 install_fonts() {
     info "Nerd Fonts: Hack, 0xProto, JetBrainsMono"
     if [[ "$OS" == "macos" ]]; then
@@ -221,14 +208,15 @@ install_oh_my_tmux() {
 }
 
 install_tpm() {
-    clone_or_update https://github.com/tmux-plugins/tpm "$HOME/.tmux/plugins/tpm"
+    clone_or_update https://github.com/tmux-plugins/tpm "$HOME/.config/tmux/plugins/tpm"
 }
 
-# Плагины кладём в ~/.tmux/plugins/<имя> заранее (тем же путём, что и сам
-# TPM), чтобы при первом запуске tmux не ждать `prefix + I` — TPM увидит
-# каталоги уже на месте и просто подхватит их.
+# Плагины кладём в ~/.config/tmux/plugins/<имя> заранее (тем же путём, что и
+# сам TPM — путь задаётся TMUX_PLUGIN_MANAGER_PATH в .tmux.conf, см. dotfiles),
+# чтобы при первом запуске tmux не ждать `prefix + I` — TPM увидит каталоги
+# уже на месте и просто подхватит их.
 install_tmux_plugins() {
-    local plugins_dir="$HOME/.tmux/plugins"
+    local plugins_dir="$HOME/.config/tmux/plugins"
     clone_or_update https://github.com/tmux-plugins/tmux-sensible   "$plugins_dir/tmux-sensible"
     clone_or_update https://github.com/tmux-plugins/tmux-resurrect  "$plugins_dir/tmux-resurrect"
     clone_or_update https://github.com/tmux-plugins/tmux-continuum  "$plugins_dir/tmux-continuum"
@@ -241,6 +229,9 @@ install_tmux_plugins() {
     clone_or_update https://github.com/omerxx/tmux-floax            "$plugins_dir/tmux-floax"
 }
 
+# Сам alacritty ставится через ./tools-extra.sh alacritty (не всем нужен
+# именно этот терминал) — а тема для него исторически осталась здесь,
+# отдельным шагом.
 install_alacritty_theme() {
     clone_or_update https://github.com/alacritty/alacritty-theme "$HOME/.config/alacritty/themes"
 }
@@ -291,23 +282,204 @@ install_uv() {
     command -v uv >/dev/null 2>&1 && ok "uv установлен" || MANUAL_TODO+=("uv -> https://docs.astral.sh/uv/getting-started/installation/")
 }
 
-install_omp_manager() {
-    if command -v omp-manager >/dev/null 2>&1; then
-        ok "omp-manager уже установлен"
+# Oh My Posh — по официальной доке ohmyposh.dev/docs/installation/: на
+# macOS через свой brew tap (jandedobbeleer/oh-my-posh/oh-my-posh, НЕ
+# homebrew/core), на Linux — официальный install.sh (кладёт бинарь в ~/bin
+# или ~/.local/bin, смотря что уже есть). Сам движок темы шелла — только
+# он ставится здесь; инициализация в .zshrc (`eval "$(oh-my-posh init
+# zsh)"`) и выбор темы — дело личных dotfiles (или TUI-мастера omp-manager,
+# см. `./tools-extra.sh omp-manager`), этот скрипт .zshrc не трогает.
+install_oh_my_posh() {
+    if command -v oh-my-posh >/dev/null 2>&1; then
+        ok "Oh My Posh уже установлен"
         return 0
     fi
-    if ! ensure_cargo_in_path; then
-        warn "cargo не найден, пропускаю omp-manager"
-        MANUAL_TODO+=("omp-manager -> https://github.com/psmux/omp-manager (нужен rust/cargo)")
-        return 1
-    fi
-    info "Устанавливаю omp-manager (TUI-мастер настройки Oh My Posh: темы, шрифты, шеллы)..."
-    warn_if_low_disk_space /tmp
-    if retry 3 cargo_install_clean omp-manager; then
-        ok "omp-manager установлен"
+    info "Устанавливаю Oh My Posh (ohmyposh.dev)..."
+    if [[ "$OS" == "macos" ]]; then
+        brew install jandedobbeleer/oh-my-posh/oh-my-posh
     else
-        warn "cargo install omp-manager не удался"
-        MANUAL_TODO+=("omp-manager -> https://github.com/psmux/omp-manager")
+        retry 3 bash -c 'curl -fsSL https://ohmyposh.dev/install.sh | bash -s'
+        export PATH="$HOME/.local/bin:$HOME/bin:$PATH"
+    fi
+    if command -v oh-my-posh >/dev/null 2>&1; then
+        ok "Oh My Posh установлен"
+        info "Инициализация в шелл — добавьте в .zshrc: eval \"\$(oh-my-posh init zsh)\" (или воспользуйтесь ./tools-extra.sh omp-manager)"
+    else
+        warn "Установка Oh My Posh не удалась"
+        MANUAL_TODO+=("Oh My Posh -> https://ohmyposh.dev/docs/installation/$OS")
         return 1
     fi
+}
+
+# ---------------------------------------------------------------------------
+# Данные для `setup.sh --list` — то же самое разбиение на группы, что в
+# PACKAGES.md, только построчно и с языком/первоисточником каждой программы.
+# Формат каждого элемента CORE_PACKAGES: "имя|ссылка|язык" — сгруппировано в
+# CORE_PACKAGE_GROUPS (имя группы -> имена пакетов, по одному списку строкой
+# через пробел, т.к. в bash 3.2 на macOS нет ассоциативных массивов).
+# ---------------------------------------------------------------------------
+
+CORE_GROUP_NAMES=(
+    "Прослойка пакетного менеджера"
+    "Базовые пакеты"
+    "Языки и инструменты разработки"
+    "Шрифты (Nerd Fonts)"
+    "Zsh/tmux-экосистема (клонируемые git-репозитории)"
+)
+
+core_group_members() {
+    case "$1" in
+        "Прослойка пакетного менеджера") echo "homebrew flatpak" ;;
+        "Базовые пакеты") echo "git ssh stow mc vifm htop neovim tmux zsh pass gnupg eza wireguard-tools" ;;
+        "Языки и инструменты разработки") echo "rust uv oh-my-posh" ;;
+        "Шрифты (Nerd Fonts)") echo "nerd-font-hack nerd-font-0xproto nerd-font-jetbrainsmono" ;;
+        "Zsh/tmux-экосистема (клонируемые git-репозитории)")
+            echo "oh-my-zsh zsh-autosuggestions zsh-syntax-highlighting oh-my-tmux tpm tmux-sensible tmux-resurrect tmux-continuum tmux-yank tmux-thumbs tmux-fzf tmux-fzf-url catppuccin-tmux tmux-sessionx tmux-floax alacritty-theme" ;;
+    esac
+}
+
+core_pkg_desc() {
+    case "$1" in
+        homebrew) echo "Пакетный менеджер для macOS" ;;
+        flatpak)  echo "Пакетный менеджер приложений для Linux (+ репозиторий flathub)" ;;
+        git)      echo "Система контроля версий" ;;
+        ssh)      echo "SSH-клиент (OpenSSH)" ;;
+        stow)     echo "Раскладка dotfiles симлинками" ;;
+        mc)       echo "Файловый менеджер Midnight Commander" ;;
+        vifm)     echo "Файловый менеджер с vim-раскладкой клавиш" ;;
+        htop)     echo "Монитор процессов" ;;
+        neovim)   echo "Редактор" ;;
+        tmux)     echo "Мультиплексор терминала" ;;
+        zsh)      echo "Оболочка (становится дефолтной через chsh)" ;;
+        pass)     echo "CLI-менеджер паролей на GPG" ;;
+        gnupg)    echo "Шифрование/подпись, нужен для pass" ;;
+        eza)      echo "Современная замена ls" ;;
+        wireguard-tools) echo "Утилиты WireGuard VPN" ;;
+        rust)     echo "Компилятор и rustup — нужен как фолбэк-сборщик для tools-extra.sh" ;;
+        uv)       echo "Менеджер Python-пакетов/окружений" ;;
+        oh-my-posh) echo "Движок темы шелла (TUI-мастер настройки omp-manager — в tools-extra.sh)" ;;
+        nerd-font-hack) echo "Шрифт Hack Nerd Font" ;;
+        nerd-font-0xproto) echo "Шрифт 0xProto Nerd Font" ;;
+        nerd-font-jetbrainsmono) echo "Шрифт JetBrainsMono Nerd Font" ;;
+        oh-my-zsh) echo "Фреймворк конфигурации zsh" ;;
+        zsh-autosuggestions) echo "Плагин oh-my-zsh: подсказки команд по истории" ;;
+        zsh-syntax-highlighting) echo "Плагин oh-my-zsh: подсветка синтаксиса в командной строке" ;;
+        oh-my-tmux) echo "Готовый конфиг tmux" ;;
+        tpm)      echo "Менеджер плагинов tmux" ;;
+        tmux-sensible) echo "Плагин tmux: разумные настройки по умолчанию" ;;
+        tmux-resurrect) echo "Плагин tmux: сохранение/восстановление сессий" ;;
+        tmux-continuum) echo "Плагин tmux: автосохранение сессий (дополняет resurrect)" ;;
+        tmux-yank) echo "Плагин tmux: копирование в системный буфер обмена" ;;
+        tmux-thumbs) echo "Плагин tmux: быстрый выбор текста с экрана (как tmux-fingers)" ;;
+        tmux-fzf)  echo "Плагин tmux: fzf-выбор сессий/окон/панелей" ;;
+        tmux-fzf-url) echo "Плагин tmux: fzf-выбор и открытие URL с экрана" ;;
+        catppuccin-tmux) echo "Тема оформления статус-бара tmux" ;;
+        tmux-sessionx) echo "Плагин tmux: fzf-менеджер сессий" ;;
+        tmux-floax) echo "Плагин tmux: плавающие окна" ;;
+        alacritty-theme) echo "Набор цветовых тем для alacritty" ;;
+        *) return 1 ;;
+    esac
+}
+
+core_pkg_url() {
+    case "$1" in
+        homebrew) echo "https://brew.sh" ;;
+        flatpak)  echo "https://github.com/flatpak/flatpak" ;;
+        git)      echo "https://github.com/git/git" ;;
+        ssh)      echo "https://github.com/openssh/openssh-portable" ;;
+        stow)     echo "https://www.gnu.org/software/stow/" ;;
+        mc)       echo "https://github.com/MidnightCommander/mc" ;;
+        vifm)     echo "https://github.com/vifm/vifm" ;;
+        htop)     echo "https://github.com/htop-dev/htop" ;;
+        neovim)   echo "https://github.com/neovim/neovim" ;;
+        tmux)     echo "https://github.com/tmux/tmux" ;;
+        zsh)      echo "https://www.zsh.org/" ;;
+        pass)     echo "https://www.passwordstore.org/" ;;
+        gnupg)    echo "https://gnupg.org/" ;;
+        eza)      echo "https://github.com/eza-community/eza" ;;
+        wireguard-tools) echo "https://www.wireguard.com/" ;;
+        rust)     echo "https://github.com/rust-lang/rustup" ;;
+        uv)       echo "https://github.com/astral-sh/uv" ;;
+        oh-my-posh) echo "https://github.com/JanDeDobbeleer/oh-my-posh" ;;
+        nerd-font-hack) echo "https://github.com/ryanoasis/nerd-fonts" ;;
+        nerd-font-0xproto) echo "https://github.com/ryanoasis/nerd-fonts" ;;
+        nerd-font-jetbrainsmono) echo "https://github.com/ryanoasis/nerd-fonts" ;;
+        oh-my-zsh) echo "https://github.com/ohmyzsh/ohmyzsh" ;;
+        zsh-autosuggestions) echo "https://github.com/zsh-users/zsh-autosuggestions" ;;
+        zsh-syntax-highlighting) echo "https://github.com/zsh-users/zsh-syntax-highlighting" ;;
+        oh-my-tmux) echo "https://github.com/gpakosz/.tmux" ;;
+        tpm)      echo "https://github.com/tmux-plugins/tpm" ;;
+        tmux-sensible) echo "https://github.com/tmux-plugins/tmux-sensible" ;;
+        tmux-resurrect) echo "https://github.com/tmux-plugins/tmux-resurrect" ;;
+        tmux-continuum) echo "https://github.com/tmux-plugins/tmux-continuum" ;;
+        tmux-yank) echo "https://github.com/tmux-plugins/tmux-yank" ;;
+        tmux-thumbs) echo "https://github.com/fcsonline/tmux-thumbs" ;;
+        tmux-fzf)  echo "https://github.com/sainnhe/tmux-fzf" ;;
+        tmux-fzf-url) echo "https://github.com/wfxr/tmux-fzf-url" ;;
+        catppuccin-tmux) echo "https://github.com/omerxx/catppuccin-tmux" ;;
+        tmux-sessionx) echo "https://github.com/omerxx/tmux-sessionx" ;;
+        tmux-floax) echo "https://github.com/omerxx/tmux-floax" ;;
+        alacritty-theme) echo "https://github.com/alacritty/alacritty-theme" ;;
+        *) return 1 ;;
+    esac
+}
+
+core_pkg_lang() {
+    case "$1" in
+        homebrew) echo "Ruby" ;;
+        flatpak)  echo "C" ;;
+        git)      echo "C" ;;
+        ssh)      echo "C" ;;
+        stow)     echo "Perl" ;;
+        mc)       echo "C" ;;
+        vifm)     echo "C" ;;
+        htop)     echo "C" ;;
+        neovim)   echo "C / Lua" ;;
+        tmux)     echo "C" ;;
+        zsh)      echo "C" ;;
+        pass)     echo "Shell" ;;
+        gnupg)    echo "C" ;;
+        eza)      echo "Rust" ;;
+        wireguard-tools) echo "C" ;;
+        rust)     echo "Rust" ;;
+        uv)       echo "Rust" ;;
+        oh-my-posh) echo "Go" ;;
+        nerd-font-hack) echo "— (шрифт)" ;;
+        nerd-font-0xproto) echo "— (шрифт)" ;;
+        nerd-font-jetbrainsmono) echo "— (шрифт)" ;;
+        oh-my-zsh) echo "Shell" ;;
+        zsh-autosuggestions) echo "Shell" ;;
+        zsh-syntax-highlighting) echo "Shell" ;;
+        oh-my-tmux) echo "Shell (конфиг tmux)" ;;
+        tpm)      echo "Shell" ;;
+        tmux-sensible) echo "Shell" ;;
+        tmux-resurrect) echo "Shell" ;;
+        tmux-continuum) echo "Shell" ;;
+        tmux-yank) echo "Shell" ;;
+        tmux-thumbs) echo "Rust" ;;
+        tmux-fzf)  echo "Shell" ;;
+        tmux-fzf-url) echo "Shell" ;;
+        catppuccin-tmux) echo "Shell (конфиг)" ;;
+        tmux-sessionx) echo "Shell" ;;
+        tmux-floax) echo "Shell" ;;
+        alacritty-theme) echo "TOML (темы)" ;;
+        *) return 1 ;;
+    esac
+}
+
+# core_pkg_os <имя> — какие ОС ставит setup.sh для этого пакета. Используется
+# в `./setup.sh --list`.
+core_pkg_os() {
+    case "$1" in
+        homebrew) echo "только macOS" ;;
+        flatpak)  echo "только Linux" ;;
+        git|ssh|stow|mc|vifm|htop|neovim|tmux|zsh|pass|gnupg|eza|wireguard-tools|\
+        rust|uv|oh-my-posh|\
+        nerd-font-hack|nerd-font-0xproto|nerd-font-jetbrainsmono|\
+        oh-my-zsh|zsh-autosuggestions|zsh-syntax-highlighting|oh-my-tmux|tpm|\
+        tmux-sensible|tmux-resurrect|tmux-continuum|tmux-yank|tmux-thumbs|tmux-fzf|\
+        tmux-fzf-url|catppuccin-tmux|tmux-sessionx|tmux-floax|alacritty-theme)
+            echo "macOS + Linux" ;;
+        *) return 1 ;;
+    esac
 }

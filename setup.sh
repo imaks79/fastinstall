@@ -5,6 +5,9 @@
 #   ./setup.sh              — TUI-диалог выбора пакетов, затем установка
 #   ./setup.sh --all        — установить всё без диалога выбора
 #   ./setup.sh -y           — то же самое, короткая форма
+#   ./setup.sh --list       — список всех программ с описанием, языком,
+#                             поддерживаемой ОС и ссылкой на первоисточник,
+#                             ничего не ставить
 #
 # Диалог — синий чекбокс-список (ncurses dialog, как в debconf/Clonezilla/
 # установщике Ubuntu Server): стрелки — перемещение, Пробел — отметить/
@@ -15,10 +18,15 @@
 # zsh-syntax-highlighting), oh-my-tmux, tpm (+ плагины tmux-sensible,
 # tmux-resurrect, tmux-continuum, tmux-yank, tmux-thumbs, tmux-fzf,
 # tmux-fzf-url, catppuccin-tmux, tmux-sessionx, tmux-floax), git, ssh, stow,
-# mc, vifm, alacritty, nvim, htop, pass, gpg, eza;
-# шрифты Hack/0xProto/JetBrainsMono Nerd Font; rust, uv, omp-manager.
-# Neovim IDE-ядро (AstroNvim/NvChad/LunarVim) сюда не входит — опционально
-# через `./tools-extra.sh ide` (диалог выбора).
+# mc, vifm, nvim, htop, pass, gpg, eza; alacritty-theme (набор тем для
+# alacritty — сам терминал сюда не входит, см. ниже);
+# шрифты Hack/0xProto/JetBrainsMono Nerd Font; rust, uv, Oh My Posh (движок
+# темы шелла, ohmyposh.dev — TUI-мастер настройки omp-manager сюда не
+# входит, см. ниже).
+# Терминал alacritty, TUI-мастер omp-manager и Neovim IDE-ядро
+# (AstroNvim/NvChad/LunarVim) сюда не входят — опционально через
+# `./tools-extra.sh alacritty` / `./tools-extra.sh omp-manager` /
+# `./tools-extra.sh ide` (диалог выбора).
 # zsh становится оболочкой по умолчанию (chsh), если выбран этот пункт.
 # На Linux дополнительно ставит flatpak + репозиторий flathub, на macOS — Homebrew
 # (это всегда, до диалога выбора — без них не работает ничего остального).
@@ -37,10 +45,9 @@ source "$SCRIPT_DIR/lib/tui_select.sh"
 OPTIONAL_STEP_NAMES=(
     install_core_packages
     set_default_shell_zsh
-    install_terminal
     install_rust
     install_uv
-    install_omp_manager
+    install_oh_my_posh
     install_fonts
     install_oh_my_zsh
     install_oh_my_zsh_plugins
@@ -52,17 +59,16 @@ OPTIONAL_STEP_NAMES=(
 OPTIONAL_STEP_DESCS=(
     "Базовые пакеты: git, ssh, stow, mc, vifm, htop, nvim, tmux, zsh, pass, gnupg, eza, wireguard-tools"
     "zsh — оболочка по умолчанию (chsh)"
-    "Терминал alacritty"
     "Rust (rustup)"
     "uv — менеджер Python-пакетов/окружений"
-    "omp-manager — TUI-мастер настройки Oh My Posh"
+    "Oh My Posh — движок темы шелла (ohmyposh.dev); TUI-мастер настройки — ./tools-extra.sh omp-manager"
     "Nerd Fonts: Hack, 0xProto, JetBrainsMono"
     "oh-my-zsh"
     "Плагины oh-my-zsh: zsh-autosuggestions, zsh-syntax-highlighting"
     "oh-my-tmux"
     "tpm — менеджер плагинов tmux"
     "Плагины tmux: sensible, resurrect, continuum, yank, thumbs, fzf, fzf-url, catppuccin, sessionx, floax"
-    "Темы alacritty"
+    "Темы alacritty (сам терминал — ./tools-extra.sh alacritty)"
 )
 
 # cmd_install <install_all: 0|1>
@@ -112,8 +118,30 @@ cmd_install() {
         done
     fi
     info "Перезапустите терминал (или выполните: exec zsh), чтобы подхватить zsh/tmux."
+    info "Терминал alacritty (тема alacritty-theme уже поставлена выше) — по выбору: ./tools-extra.sh alacritty"
+    info "omp-manager (TUI-мастер настройки Oh My Posh: темы, шрифты, шеллы) — по выбору: ./tools-extra.sh omp-manager"
     info "Neovim IDE (AstroNvim/NvChad/LunarVim) поставится по выбору: ./tools-extra.sh ide"
     print_astra
+}
+
+# cmd_list — `./setup.sh --list`: все программы, которые ставит setup.sh,
+# сгруппированные так же, как в PACKAGES.md, с описанием, языком реализации
+# и ссылкой на первоисточник (git-репозиторий, а если его нет — сайт
+# разработчика). Ничего не устанавливает.
+cmd_list() {
+    local group name
+    for group in "${CORE_GROUP_NAMES[@]}"; do
+        printf '\n== %s ==\n' "$group"
+        for name in $(core_group_members "$group"); do
+            printf '  %s\n' "$name"
+            printf '      %s\n' "$(core_pkg_desc "$name")"
+            printf '      Язык:          %s\n' "$(core_pkg_lang "$name")"
+            printf '      ОС:            %s\n' "$(core_pkg_os "$name")"
+            printf '      Первоисточник: %s\n' "$(core_pkg_url "$name")"
+        done
+    done
+    echo
+    info "Дополнительные инструменты (не входят в setup.sh): ./tools-extra.sh --list"
 }
 
 CMD="install"
@@ -122,12 +150,14 @@ for arg in "$@"; do
     case "$arg" in
         --all|-y) INSTALL_ALL=1 ;;
         install) CMD="install" ;;
+        --list) CMD="list" ;;
         -h|--help|help) CMD="help" ;;
-        *) err "Неизвестный аргумент: $arg (доступно: install, --all/-y, help)"; exit 1 ;;
+        *) err "Неизвестный аргумент: $arg (доступно: install, --all/-y, --list, help)"; exit 1 ;;
     esac
 done
 
 case "$CMD" in
     install) cmd_install "$INSTALL_ALL" ;;
-    help) sed -n '2,25p' "$0" ;;
+    list) cmd_list ;;
+    help) sed -n '2,33p' "$0" ;;
 esac

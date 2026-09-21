@@ -4,14 +4,17 @@ Bootstrap-скрипты для быстрого разворачивания б
 машине — macOS и Linux (apt/dnf/pacman/zypper/apk): zsh + oh-my-zsh, tmux
 (oh-my-tmux) + tpm с плагинами (tmux-sensible, tmux-resurrect,
 tmux-continuum, tmux-yank, tmux-thumbs, tmux-fzf, tmux-fzf-url,
-catppuccin-tmux, tmux-sessionx, tmux-floax), neovim, mc, vifm, alacritty, git, ssh,
-stow, htop, eza, pass/gnupg, rust, uv, omp-manager (Oh My Posh). Сами
-dotfiles (личные конфиги) —
+catppuccin-tmux, tmux-sessionx, tmux-floax), neovim, mc, vifm, git, ssh,
+stow, htop, eza, pass/gnupg, rust, uv, [Oh My Posh](https://ohmyposh.dev/)
+(движок темы шелла), alacritty-theme (набор тем — сам терминал alacritty
+отдельно, см. ниже). Сами dotfiles (личные конфиги) —
 отдельный репозиторий; этот проект только ставит и обновляет
 пакеты/инструменты, на которые эти конфиги рассчитаны, включая `stow`,
-которым тот репозиторий раскладывает свои конфиги. Neovim IDE
+которым тот репозиторий раскладывает свои конфиги. Терминал alacritty,
+TUI-мастер настройки Oh My Posh (omp-manager) и Neovim IDE
 (AstroNvim/NvChad/LunarVim, с возможностью снести и попробовать другую
-сборку) — по выбору: `./tools-extra.sh ide`.
+сборку) — по выбору: `./tools-extra.sh alacritty` /
+`./tools-extra.sh omp-manager` / `./tools-extra.sh ide`.
 
 ## Структура
 
@@ -48,6 +51,8 @@ cd ~/fastinstall
 ```bash
 ./setup.sh        # TUI-диалог выбора пакетов, затем установка выбранного
 ./setup.sh --all  # установить всё без диалога выбора (-y — короткая форма)
+./setup.sh --list # список всех программ с описанием, языком, поддерживаемой
+                   # ОС и ссылкой на первоисточник, ничего не ставить
 ```
 
 Базовые предпосылки (Homebrew/flatpak, curl, git) ставятся всегда, до
@@ -143,7 +148,9 @@ Releases.
 ./tools-extra.sh                # TUI-диалог выбора инструментов
 ./tools-extra.sh --all          # поставить все инструменты без диалога
 ./tools-extra.sh bat yazi lnav  # поставить только перечисленные
-./tools-extra.sh --list         # список с описаниями, ничего не ставить
+./tools-extra.sh --list         # список с описанием, языком, поддерживаемой
+                                 # ОС и ссылкой на первоисточник, ничего не
+                                 # ставить
 ```
 
 Диалог выбора — тот же, что и в `setup.sh` (см. выше); при явном
@@ -183,7 +190,7 @@ firewall, пользователей и cron, поэтому при исполь
 
 Все шаги `setup.sh` идемпотентны (уже установленное просто пропускается) —
 если что-то упало, чаще всего достаточно **перезапустить `./setup.sh`**.
-Сетевые шаги (git clone, oh-my-zsh, omp-manager) сами делают 3 попытки с паузой,
+Сетевые шаги (git clone, oh-my-zsh, Oh My Posh) сами делают 3 попытки с паузой,
 но на только что поднятой машине сеть иногда не готова дольше — тогда
 просто запустите скрипт ещё раз. В конце работы скрипт печатает, что упало
 (`FAILED_STEPS`) и что нужно сделать руками (`MANUAL_TODO`).

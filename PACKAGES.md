@@ -1,7 +1,10 @@
 # Что устанавливает setup.sh
 
 Список того, что ставится (или проверяется на наличие) командой `./setup.sh`,
-и как именно — по каждому пакетному менеджеру.
+и как именно — по каждому пакетному менеджеру. Тот же список — с языком
+реализации, поддерживаемой ОС и ссылкой на первоисточник (git-репозиторий, а
+если нет — сайт разработчика) каждой программы — печатает `./setup.sh --list`,
+ничего не устанавливая.
 
 ## Прослойка пакетного менеджера
 
@@ -36,11 +39,10 @@
 `stow` этот репозиторий сам не использует (раскладку конфигов делает
 отдельный dotfiles-репозиторий) — ставится заранее как зависимость для него.
 
-## Терминал
-
-| Пакет | macOS | Linux |
-|---|---|---|
-| alacritty | brew cask | нативный пакет, иначе flatpak `org.alacritty.Alacritty` |
+Сам терминал (alacritty) сюда больше не входит — это опциональный шаг
+`./tools-extra.sh alacritty`, см. [TOOLS-EXTRA.md](TOOLS-EXTRA.md). Тема
+для него (alacritty-theme) осталась здесь, см. ниже "Клонируемые
+git-репозитории".
 
 ## Языки и инструменты разработки
 
@@ -48,12 +50,14 @@
 |---|---|
 | rust | `rustup` (официальный установщик, обе ОС); перед сборкой на Linux ставится тулчейн — компилятор, `pkg-config`, заголовки openssl |
 | uv | brew (macOS) / официальный скрипт `astral.sh/uv/install.sh` (Linux) |
-| [omp-manager](https://github.com/psmux/omp-manager) | `cargo install omp-manager` (все ОС) — нет ни в одном пакетном менеджере, только crates.io |
+| [Oh My Posh](https://ohmyposh.dev/) | macOS — свой brew tap `jandedobbeleer/oh-my-posh/oh-my-posh` (не `homebrew/core`); Linux — официальный `ohmyposh.dev/install.sh` |
 
-omp-manager — TUI-мастер для [Oh My Posh](https://ohmyposh.dev): ставит сам
-OMP, помогает подобрать Nerd Font, тему и настраивает шеллы через один
-интерфейс (`omp-manager` после установки). Нужен `cargo`, поэтому в
-`cmd_install()` идёт после `install_rust`.
+Oh My Posh — движок темы шелла. Ставится здесь только сам бинарь;
+инициализация в `.zshrc` (`eval "$(oh-my-posh init zsh)"`) и выбор темы —
+дело личных dotfiles, `setup.sh` `.zshrc` не трогает. TUI-мастер настройки
+(подбор Nerd Font, темы, прописывание инициализации в шеллы) —
+[omp-manager](https://github.com/psmux/omp-manager), опциональный шаг
+`./tools-extra.sh omp-manager`, см. [TOOLS-EXTRA.md](TOOLS-EXTRA.md).
 
 ## Шрифты (Nerd Fonts)
 
@@ -71,18 +75,22 @@ macOS — brew cask; Linux — через [`getnf`](https://github.com/getnf/get
 | zsh-autosuggestions | `~/.config/.oh-my-zsh/custom/plugins/zsh-autosuggestions` |
 | zsh-syntax-highlighting | `~/.config/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting` |
 | oh-my-tmux | `~/.config/.oh-my-tmux` |
-| tpm | `~/.tmux/plugins/tpm` |
-| tmux-sensible | `~/.tmux/plugins/tmux-sensible` |
-| tmux-resurrect | `~/.tmux/plugins/tmux-resurrect` |
-| tmux-continuum | `~/.tmux/plugins/tmux-continuum` |
-| tmux-yank | `~/.tmux/plugins/tmux-yank` |
-| tmux-thumbs | `~/.tmux/plugins/tmux-thumbs` |
-| tmux-fzf | `~/.tmux/plugins/tmux-fzf` |
-| tmux-fzf-url | `~/.tmux/plugins/tmux-fzf-url` |
-| catppuccin-tmux | `~/.tmux/plugins/catppuccin-tmux` |
-| tmux-sessionx | `~/.tmux/plugins/tmux-sessionx` |
-| tmux-floax | `~/.tmux/plugins/tmux-floax` |
+| tpm | `~/.config/tmux/plugins/tpm` |
+| tmux-sensible | `~/.config/tmux/plugins/tmux-sensible` |
+| tmux-resurrect | `~/.config/tmux/plugins/tmux-resurrect` |
+| tmux-continuum | `~/.config/tmux/plugins/tmux-continuum` |
+| tmux-yank | `~/.config/tmux/plugins/tmux-yank` |
+| tmux-thumbs | `~/.config/tmux/plugins/tmux-thumbs` |
+| tmux-fzf | `~/.config/tmux/plugins/tmux-fzf` |
+| tmux-fzf-url | `~/.config/tmux/plugins/tmux-fzf-url` |
+| catppuccin-tmux | `~/.config/tmux/plugins/catppuccin-tmux` |
+| tmux-sessionx | `~/.config/tmux/plugins/tmux-sessionx` |
+| tmux-floax | `~/.config/tmux/plugins/tmux-floax` |
 | alacritty-theme | `~/.config/alacritty/themes` |
+
+Сам терминал alacritty сюда не входит — это опциональный шаг
+`./tools-extra.sh alacritty`, см. [TOOLS-EXTRA.md](TOOLS-EXTRA.md); тема же
+для него (`alacritty-theme` выше) осталась в `setup.sh`.
 
 Альтернативный Neovim IDE (AstroNvim/NvChad/LunarVim по официальным докам,
 с переустановкой с нуля при повторном выборе) сюда не входит — это
@@ -100,8 +108,8 @@ macOS — brew cask; Linux — через [`getnf`](https://github.com/getnf/get
 TUI/CLI-инструментов ставятся отдельными скриптами, чтобы не грузить
 основную установку тем, что нужно не всем:
 
-- **`./tools-extra.sh`** — yazi, bat, duf, tldr, termusic, lazygit, k9s и
-  ещё 16 инструментов. См. [TOOLS-EXTRA.md](TOOLS-EXTRA.md).
+- **`./tools-extra.sh`** — alacritty, yazi, bat, duf, tldr, termusic, lazygit,
+  k9s и ещё 21 инструмент. См. [TOOLS-EXTRA.md](TOOLS-EXTRA.md).
 - **`./tui-tools.sh`** — семейство [tui-tools](https://github.com/tui-tools)
   для администрирования Linux-сервера (firewall, systemd, cron, сертификаты
   и т.п.), только Linux. См. раздел в [README.md](README.md#tui-toolssh).
@@ -132,7 +140,7 @@ flatpak и т.п.) — по образцу `install_rust()`, `install_uv()`,
 функции из `cmd_install()` в `setup.sh`.
 
 **Клонируемый git-репозиторий** (плагин, тема) — по образцу
-`install_oh_my_tmux()` / `install_alacritty_theme()`: одна строка с
+`install_oh_my_tmux()` в `lib/packages.sh`: одна строка с
 `clone_or_update <url> <путь>` (она сама решает clone или pull). Не забудь
 добавить вызов в `cmd_install()`.
 
@@ -141,3 +149,10 @@ flatpak и т.п.) — по образцу `install_rust()`, `install_uv()`,
 
 После любых правок: `bash -n setup.sh lib/*.sh` — быстрая проверка синтаксиса
 без реального запуска.
+
+**Не забудьте `./setup.sh --list`** — данные для него (описание, язык,
+поддерживаемая ОС, ссылка на первоисточник) отдельная таблица в конце
+`lib/packages.sh` (`core_group_members()`, `core_pkg_desc()`, `core_pkg_url()`,
+`core_pkg_lang()`, `core_pkg_os()`, `CORE_GROUP_NAMES`) и синхронизируется
+вручную с тем, что реально устанавливает `cmd_install()` — при
+добавлении/удалении пакета допишите (или уберите) его и там.
