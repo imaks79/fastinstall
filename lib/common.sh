@@ -119,6 +119,21 @@ clone_or_update() {
     fi
 }
 
+# ensure_cargo_in_path — подхватывает cargo, если rust уже стоит, но PATH
+# этого конкретного bash-процесса про него ещё не знает. Основной сценарий:
+# в TUI-диалоге setup.sh сняли галочку с install_rust (rust уже был
+# установлен раньше), поэтому в этом прогоне cargo/env никто не source'ил —
+# rustc/cargo лежат в ~/.cargo/bin, но в PATH текущего процесса их нет, хотя
+# в интерактивном шелле пользователя (через .zshenv/.profile от установщика
+# rustup) они обычно есть. Без этого шаги вроде install_omp_manager/
+# pkg_or_cargo молча ругаются "cargo не найден" на машине, где rust на самом
+# деле стоит.
+ensure_cargo_in_path() {
+    command -v cargo >/dev/null 2>&1 && return 0
+    [[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
+    command -v cargo >/dev/null 2>&1
+}
+
 # cargo_install_clean <крейт...>
 # `cargo install`, но подчищает временные каталоги сборки в /tmp — при
 # неудаче cargo оставляет /tmp/cargo-install<случайное> навсегда (новое

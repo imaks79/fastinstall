@@ -80,12 +80,13 @@ pkg_cask() {
 }
 
 install_core_packages() {
-    info "Базовые пакеты: git, ssh, stow, mc, htop, nvim, tmux, zsh, eza"
+    info "Базовые пакеты: git, ssh, stow, mc, vifm, htop, nvim, tmux, zsh, eza"
     pkg_native git    git        git    git    git    git
     pkg_native ""     openssh-client openssh-clients openssh openssh openssh-client
     command -v ssh >/dev/null 2>&1 || pkg_native openssh openssh openssh openssh openssh openssh
     pkg_native stow   stow       stow   stow   stow   stow
     pkg_native mc     mc         mc     mc     mc     mc
+    pkg_native vifm   vifm       vifm   vifm   vifm   vifm
     pkg_native htop   htop       htop   htop   htop   htop
     pkg_native neovim neovim     neovim neovim neovim neovim
     pkg_native tmux   tmux       tmux   tmux   tmux   tmux
@@ -295,7 +296,7 @@ install_omp_manager() {
         ok "omp-manager уже установлен"
         return 0
     fi
-    if ! command -v cargo >/dev/null 2>&1; then
+    if ! ensure_cargo_in_path; then
         warn "cargo не найден, пропускаю omp-manager"
         MANUAL_TODO+=("omp-manager -> https://github.com/psmux/omp-manager (нужен rust/cargo)")
         return 1

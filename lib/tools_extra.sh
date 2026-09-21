@@ -23,7 +23,7 @@ pkg_or_cargo() {
         MANUAL_TODO+=("$bin -> нет пакета в этом пакетном менеджере, ставьте вручную")
         return 1
     fi
-    if ! command -v cargo >/dev/null 2>&1; then
+    if ! ensure_cargo_in_path; then
         warn "$bin недоступен через пакетный менеджер, а cargo не найден"
         MANUAL_TODO+=("$bin -> нет пакета в этом пакетном менеджере; поставьте rust (cargo install $crate)")
         return 1

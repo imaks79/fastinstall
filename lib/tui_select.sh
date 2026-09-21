@@ -10,9 +10,23 @@
 # поставить не удалось (нет сети/прав, нет TERM) — тихо откатываемся на
 # простой пронумерованный список (без ncurses), чтобы выбор пакетов работал
 # в любом окружении, а не превращался в жёсткую зависимость.
+#
+# macOS-нюанс: формула Homebrew собирает dialog флагом `./configure
+# --with-ncurses` (без 'w') и `uses_from_macos "ncurses"` — то есть линкует
+# его с однобайтовой системной /usr/lib/libncurses.5.4.dylib (наследие ещё
+# Tiger), а не с широкой Homebrew-ncursesw. Однобайтовый dialog не понимает
+# многобайтовый UTF-8 и вместо кириллицы в описаниях пунктов рисует мусор
+# вроде "~R~Кбе~ди~Ве" (каждый байт UTF-8-последовательности пропускается
+# через таблицу псевдографики). На Linux дистрибутивный dialog обычно уже
+# линкован с ncursesw, поэтому там этой проблемы нет. См.
+# tui_build_dialog_widec_macos() ниже — она на лету собирает свою
+# UTF-8-совместимую сборку dialog против уже стоящей Homebrew-ncurses, не
+# трогая сам пакет dialog.
 
 TUI_BACKEND=""
 TUI_UTF8_LOCALE=""
+TUI_DIALOG_BIN=""
+TUI_DIALOG_WIDEC_PREFIX="$HOME/.cache/fastinstall/dialog-widec"
 
 # tui_utf8_locale — печатает имя UTF-8-локали для запуска dialog. Без неё
 # ncurses не знает, что описания пунктов (кириллица) — многобайтовый UTF-8,
@@ -51,9 +65,93 @@ tui_utf8_locale() {
     printf '%s' "$TUI_UTF8_LOCALE"
 }
 
-# tui_ensure_dialog — гарантирует, что `dialog` доступен, ставит при
-# необходимости. Возвращает 0, если dialog можно использовать, 1 — если нет
-# (используем упрощённый список-фолбэк).
+# tui_dialog_is_widec <путь-к-бинарю> — проверяет, что dialog линкован с
+# многобайтовой (wide) ncurses, а не с однобайтовой. На Linux не проверяем
+# (там это почти никогда не проблема) — считаем любой найденный dialog годным.
+tui_dialog_is_widec() {
+    local bin="$1"
+    [[ -x "$bin" ]] || return 1
+    [[ "$OS" == "macos" ]] || return 0
+    command -v otool >/dev/null 2>&1 || return 0
+    otool -L "$bin" 2>/dev/null | grep -qi 'libncursesw'
+}
+
+# tui_build_dialog_widec_macos — собирает dialog из тех же исходников, что и
+# Homebrew-формула (та же версия, invisible-mirror.net), но с флагом
+# --with-ncursesw против уже установленной keg-only Homebrew-ncurses (там
+# есть широкая libncursesw, в отличие от системной macOS-ncurses). Кладёт
+# результат в TUI_DIALOG_WIDEC_PREFIX, сам пакет dialog не трогает. При
+# успехе печатает путь к рабочему бинарю и возвращает 0.
+tui_build_dialog_widec_macos() {
+    local target="$TUI_DIALOG_WIDEC_PREFIX/bin/dialog"
+    if tui_dialog_is_widec "$target"; then
+        printf '%s' "$target"
+        return 0
+    fi
+
+    command -v brew >/dev/null 2>&1 || return 1
+    command -v cc >/dev/null 2>&1 || return 1
+
+    local ncurses_prefix
+    ncurses_prefix="$(brew --prefix ncurses 2>/dev/null)"
+    if [[ -z "$ncurses_prefix" || ! -d "$ncurses_prefix/lib/pkgconfig" ]]; then
+        brew install ncurses >/dev/null 2>&1
+        ncurses_prefix="$(brew --prefix ncurses 2>/dev/null)"
+    fi
+    [[ -n "$ncurses_prefix" && -d "$ncurses_prefix/lib/pkgconfig" ]] || return 1
+
+    local ver
+    ver="$(brew list --versions dialog 2>/dev/null | awk '{print $2}')"
+    [[ -n "$ver" ]] || ver="1.3-20260721"
+
+    # info/warn/ok здесь и ниже — все с явным >&2: результат этой функции
+    # возвращается через "печатает путь в stdout" (см. вызывающий код,
+    # widec_bin="$(tui_build_dialog_widec_macos)"), и без >&2 текст этих
+    # сообщений попал бы в тот же stdout, испортив возвращаемый путь.
+    info "Homebrew-сборка dialog не понимает UTF-8 (кириллица в чеклисте будет мусором) — собираю свою UTF-8-совместимую сборку dialog $ver поверх Homebrew-ncursesw..." >&2
+    local tmp; tmp="$(mktemp -d)"
+    if ! curl -fsSL -o "$tmp/dialog.tgz" "https://invisible-mirror.net/archives/dialog/dialog-${ver}.tgz"; then
+        warn "Не удалось скачать исходники dialog $ver" >&2
+        rm -rf "$tmp"
+        return 1
+    fi
+    tar -xzf "$tmp/dialog.tgz" -C "$tmp"
+    local srcdir="$tmp/dialog-${ver}"
+    [[ -d "$srcdir" ]] || srcdir="$(find "$tmp" -maxdepth 1 -type d -name 'dialog-*' | head -1)"
+    if [[ -z "$srcdir" || ! -d "$srcdir" ]]; then
+        warn "Не нашёл распакованные исходники dialog" >&2
+        rm -rf "$tmp"
+        return 1
+    fi
+
+    rm -rf "$TUI_DIALOG_WIDEC_PREFIX"
+    if ! (
+        cd "$srcdir" &&
+        PKG_CONFIG_PATH="$ncurses_prefix/lib/pkgconfig" \
+        CPPFLAGS="-I$ncurses_prefix/include" \
+        LDFLAGS="-L$ncurses_prefix/lib" \
+        ./configure --prefix="$TUI_DIALOG_WIDEC_PREFIX" --with-ncursesw >/dev/null 2>&1 &&
+        make -j"$(sysctl -n hw.ncpu 2>/dev/null || echo 2)" install-full >/dev/null 2>&1
+    ); then
+        warn "Сборка UTF-8-совместимого dialog не удалась" >&2
+        rm -rf "$tmp"
+        return 1
+    fi
+    rm -rf "$tmp"
+
+    if tui_dialog_is_widec "$target"; then
+        ok "Собран UTF-8-совместимый dialog: $target" >&2
+        printf '%s' "$target"
+        return 0
+    fi
+    warn "Собранный dialog всё равно не линкуется с ncursesw" >&2
+    return 1
+}
+
+# tui_ensure_dialog — гарантирует, что рабочий (понимающий UTF-8) dialog
+# доступен, ставит/собирает при необходимости. Возвращает 0 и заполняет
+# TUI_DIALOG_BIN путём к бинарю, если dialog можно использовать, 1 — если
+# нет (используем упрощённый список-фолбэк).
 tui_ensure_dialog() {
     case "$TUI_BACKEND" in
         dialog) return 0 ;;
@@ -65,21 +163,32 @@ tui_ensure_dialog() {
         return 1
     fi
 
-    if command -v dialog >/dev/null 2>&1; then
-        TUI_BACKEND="dialog"
-        return 0
+    if ! command -v dialog >/dev/null 2>&1; then
+        info "Ставлю dialog (нужен для TUI-диалога выбора пакетов)..."
+        if pkg_native dialog dialog dialog dialog dialog dialog >/dev/null 2>&1 && command -v dialog >/dev/null 2>&1; then
+            ok "dialog установлен"
+        else
+            warn "dialog поставить не удалось — использую упрощённый список выбора (без стрелок/пробела)"
+            TUI_BACKEND="none"
+            return 1
+        fi
     fi
 
-    info "Ставлю dialog (нужен для TUI-диалога выбора пакетов)..."
-    if pkg_native dialog dialog dialog dialog dialog dialog >/dev/null 2>&1 && command -v dialog >/dev/null 2>&1; then
-        ok "dialog установлен"
-        TUI_BACKEND="dialog"
-        return 0
+    TUI_DIALOG_BIN="$(command -v dialog)"
+
+    if [[ "$OS" == "macos" ]] && ! tui_dialog_is_widec "$TUI_DIALOG_BIN"; then
+        local widec_bin
+        if widec_bin="$(tui_build_dialog_widec_macos)"; then
+            TUI_DIALOG_BIN="$widec_bin"
+        else
+            warn "Homebrew-версия dialog не понимает UTF-8, а свою UTF-8-сборку сделать не удалось (нет сети или инструментов сборки) — использую упрощённый список выбора"
+            TUI_BACKEND="none"
+            return 1
+        fi
     fi
 
-    warn "dialog поставить не удалось — использую упрощённый список выбора (без стрелок/пробела)"
-    TUI_BACKEND="none"
-    return 1
+    TUI_BACKEND="dialog"
+    return 0
 }
 
 # tui_checklist <заголовок> <имя1> <описание1> [имя2 описание2 ...]
@@ -106,9 +215,10 @@ tui_checklist_dialog() {
     done
 
     local utf8_locale; utf8_locale="$(tui_utf8_locale)"
+    local dialog_bin="${TUI_DIALOG_BIN:-dialog}"
     local tmpfile; tmpfile="$(mktemp)"
     local exit_status
-    if LC_ALL="$utf8_locale" LANG="$utf8_locale" dialog --backtitle "fastinstall" \
+    if LC_ALL="$utf8_locale" LANG="$utf8_locale" "$dialog_bin" --backtitle "fastinstall" \
                --title "$title" \
                --checklist "Пробел — отметить/снять пункт, Enter — установить отмеченное, Esc/Cancel — отмена" \
                0 0 0 \

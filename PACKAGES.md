@@ -18,6 +18,7 @@
 | ssh | (системный) | openssh-client | openssh-clients | openssh | openssh | openssh-client |
 | stow | stow | stow | stow | stow | stow | stow |
 | mc | mc | mc | mc | mc | mc | mc |
+| vifm | vifm | vifm | vifm | vifm | vifm | vifm |
 | htop | htop | htop | htop | htop | htop | htop |
 | nvim | neovim | neovim | neovim | neovim | neovim | neovim |
 | tmux | tmux | tmux | tmux | tmux | tmux | tmux |

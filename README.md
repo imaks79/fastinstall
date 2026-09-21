@@ -4,7 +4,7 @@ Bootstrap-скрипты для быстрого разворачивания б
 машине — macOS и Linux (apt/dnf/pacman/zypper/apk): zsh + oh-my-zsh, tmux
 (oh-my-tmux) + tpm с плагинами (tmux-sensible, tmux-resurrect,
 tmux-continuum, tmux-yank, tmux-thumbs, tmux-fzf, tmux-fzf-url,
-catppuccin-tmux, tmux-sessionx, tmux-floax), neovim, mc, alacritty, git, ssh,
+catppuccin-tmux, tmux-sessionx, tmux-floax), neovim, mc, vifm, alacritty, git, ssh,
 stow, htop, eza, pass/gnupg, rust, uv, omp-manager (Oh My Posh). Сами
 dotfiles (личные конфиги) —
 отдельный репозиторий; этот проект только ставит и обновляет

@@ -15,7 +15,7 @@
 # zsh-syntax-highlighting), oh-my-tmux, tpm (+ плагины tmux-sensible,
 # tmux-resurrect, tmux-continuum, tmux-yank, tmux-thumbs, tmux-fzf,
 # tmux-fzf-url, catppuccin-tmux, tmux-sessionx, tmux-floax), git, ssh, stow,
-# mc, alacritty, nvim, htop, pass, gpg, eza;
+# mc, vifm, alacritty, nvim, htop, pass, gpg, eza;
 # шрифты Hack/0xProto/JetBrainsMono Nerd Font; rust, uv, omp-manager.
 # Neovim IDE-ядро (AstroNvim/NvChad/LunarVim) сюда не входит — опционально
 # через `./tools-extra.sh ide` (диалог выбора).
@@ -50,7 +50,7 @@ OPTIONAL_STEP_NAMES=(
     install_alacritty_theme
 )
 OPTIONAL_STEP_DESCS=(
-    "Базовые пакеты: git, ssh, stow, mc, htop, nvim, tmux, zsh, pass, gnupg, eza, wireguard-tools"
+    "Базовые пакеты: git, ssh, stow, mc, vifm, htop, nvim, tmux, zsh, pass, gnupg, eza, wireguard-tools"
     "zsh — оболочка по умолчанию (chsh)"
     "Терминал alacritty"
     "Rust (rustup)"
