@@ -630,9 +630,34 @@ install_isd() {
 # (kevinburke/ssh_config -> adembc/ssh_config) — `go install` его игнорирует
 # вне основного модуля, поэтому такого фолбэка в официальной доке нет и здесь
 # он не используется, только brew/бинарь с релизов.
+#
+# Путь ~/.lazyssh (лог + metadata.json) захардкожен в самом бинарнике
+# (internal/logger/logger.go: filepath.Join(home, ".lazyssh")), флага или
+# переменной окружения для его переопределения нет. Поэтому вместо
+# ~/.lazyssh здесь используется симлинк на ~/.config/lazyssh: бинарь
+# как писал в "~/.lazyssh", так и продолжает, а реальные файлы лежат
+# в ~/.config/lazyssh (единообразно с остальными XDG-инструментами).
+relocate_lazyssh_home() {
+    local real="$HOME/.config/lazyssh" link="$HOME/.lazyssh"
+    if [[ -L "$link" ]]; then
+        return 0
+    fi
+    mkdir -p "$real"
+    if [[ -d "$link" ]]; then
+        # переносим то, что уже успел создать бинарь при предыдущих запусках
+        find "$link" -mindepth 1 -maxdepth 1 -exec mv -n {} "$real"/ \;
+        rmdir "$link" 2>/dev/null || rm -rf "$link"
+    fi
+    ln -s "$real" "$link"
+}
+
 install_lazyssh() {
-    command -v lazyssh >/dev/null 2>&1 && { ok "lazyssh уже установлен"; return 0; }
+    if command -v lazyssh >/dev/null 2>&1; then
+        relocate_lazyssh_home
+        ok "lazyssh уже установлен"; return 0
+    fi
     if pkg_native "Adembc/homebrew-tap/lazyssh" "" "" "" "" "" && command -v lazyssh >/dev/null 2>&1; then
+        relocate_lazyssh_home
         ok "lazyssh установлен"; return 0
     fi
     [[ "$OS" == "linux" ]] || { MANUAL_TODO+=("lazyssh -> https://github.com/Adembc/lazyssh#-installation"); return 1; }
@@ -641,7 +666,8 @@ install_lazyssh() {
         aarch64|arm64) arch=arm64 ;;
         *) MANUAL_TODO+=("lazyssh -> https://github.com/Adembc/lazyssh/releases"); return 1 ;;
     esac
-    install_gh_release_tar "Adembc/lazyssh" "lazyssh" "lazyssh_Linux_${arch}.tar.gz" "checksums.txt"
+    install_gh_release_tar "Adembc/lazyssh" "lazyssh" "lazyssh_Linux_${arch}.tar.gz" "checksums.txt" \
+        && relocate_lazyssh_home
 }
 
 # herdr (herdr.dev) — агенто-осведомлённый мультиплексор терминала для
