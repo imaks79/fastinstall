@@ -121,7 +121,6 @@ cmd_install() {
     info "Терминал alacritty (тема alacritty-theme уже поставлена выше) — по выбору: ./tools-extra.sh alacritty"
     info "omp-manager (TUI-мастер настройки Oh My Posh: темы, шрифты, шеллы) — по выбору: ./tools-extra.sh omp-manager"
     info "Neovim IDE (AstroNvim/NvChad/LunarVim) поставится по выбору: ./tools-extra.sh ide"
-    print_astra
 }
 
 # cmd_list — `./setup.sh --list`: все программы, которые ставит setup.sh,

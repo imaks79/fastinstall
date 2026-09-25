@@ -76,33 +76,6 @@ detect_os() {
     info "Обнаружена система: $OS${PKG_MANAGER:+ ($PKG_MANAGER)}"
 }
 
-print_astra() {
-    printf '%s' "$C_MAGENTA"
-    cat <<'EOF'
-
-           *    \   |   /    *
-             *   \  |  /   *
-               *  \ | /  *
-          * * *  \\\|///  * * *
-                 ( ( o ) )
-          * * *  ///|\\\  * * *
-               *  / | \  *
-             *   /  |  \   *
-           *    /   |   \    *
-
-EOF
-    printf '%s' "$C_GREEN"
-    cat <<'EOF'
-                     |
-                     |
-                    /|\
-                   / | \
-                     |
-                    / \
-EOF
-    printf '%s\n' "$C_RESET"
-}
-
 # clone_or_update <repo-url> <целевая директория>
 clone_or_update() {
     local repo="$1" dir="$2"
